@@ -20,28 +20,29 @@ enum UserRole {
 enum OrderStatus {
   CREATED
   PAID
-  FULFILLING
+  FULFILLING // 고객이 결제 완료 → 실제 배송이 완료되기 전까지의 상태
   SHIPPED
   COMPLETED
   CANCELLED
 }
 
 enum PaymentStatus {
-  PENDING
-  AUTHORIZED
-  CAPTURED
+  PENDING // 결제 프로세스를 시작했지만 아직 확정되지 않은 상태
+  AUTHORIZED // 카드사/PG에서 금액을 승인(Authorize) 했지만, 실제로 돈이 빠져나가지는 않은 상태
+  CAPTURED // 승인된 금액을 실제로 청구(매입, Capture) 해서 돈이 상점으로 입금되는 상태
   REFUNDED
   FAILED
 }
 
 enum ShipmentStatus {
-  PENDING
-  SHIPPED
-  DELIVERED
+  PENDING // 주문은 완료되었지만 배송이 아직 시작되지 않은 상태
+  SHIPPED // 상품이 창고에서 출고되어 택배사/배송사에 전달된 상태
+  DELIVERED // 고객에게 최종적으로 배송이 완료된 상태
   FAILED
 }
 
-// User & Customer
+// Core
+// User: 시스템 로그인 계정. 고객뿐 아니라 운영자(Admin)까지 포함
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -53,6 +54,7 @@ model User {
   customer  Customer?
 }
 
+// Customer: 실제 쇼핑몰에서 구매자(소비자)를 표현
 model Customer {
   id        String   @id @default(cuid())
   userId    String   @unique
@@ -83,16 +85,16 @@ model Category {
   id        String   @id @default(cuid())
   name      String
   slug      String   @unique
-  parentId  String?
-  parent    Category? @relation("CategoryToChildren", fields: [parentId], references: [id])
-  children  Category[] @relation("CategoryToChildren")
+  parentId  String? // 부모 카테고리 ID
+  parent    Category? @relation("CategoryHierarchy", fields: [parentId], references: [id]) 
+  children  Category[] @relation("CategoryHierarchy")
   products  Product[]
 }
 
 model Product {
   id          String   @id @default(cuid())
   name        String
-  slug        String   @unique
+  slug        String   @unique 
   description String?
   price       Decimal  
   stock       Int      @default(0)
@@ -130,9 +132,9 @@ model Order {
   id         String   @id @default(cuid())
   customerId String?
   status     OrderStatus @default(CREATED)
-  subtotal   Decimal  
-  shipping   Decimal   @default(0)
-  total      Decimal  
+  subtotalAmount   Decimal  // 상품 금액 합계(할인/배송비/세금 적용 전)
+  shippingAmount   Decimal   @default(0) // 배송비
+  totalAmount      Decimal  // 최종 결제 금액(Subtotal – Discount + Shipping + Tax)
   createdAt  DateTime @default(now())
 
   customer   Customer? @relation(fields: [customerId], references: [id])
@@ -146,8 +148,8 @@ model OrderLine {
   orderId   String
   productId String
   quantity  Int
-  unitPrice Decimal  
-  lineTotal Decimal  
+  unitPrice Decimal  // 상품 단가
+  lineTotalAmount Decimal  // 상품 총액(UnitPrice * Quantity)
 
   order     Order   @relation(fields: [orderId], references: [id])
   product   Product @relation(fields: [productId], references: [id])
@@ -158,7 +160,7 @@ model Payment {
   id        String   @id @default(cuid())
   orderId   String   @unique
   status    PaymentStatus @default(PENDING)
-  amount    Decimal  
+  amount    Decimal  // 결제 금액(최종 결제 금액과 동일)  
   provider  String?
   createdAt DateTime @default(now())
 
@@ -169,9 +171,9 @@ model Shipment {
   id         String   @id @default(cuid())
   orderId    String   @unique
   status     ShipmentStatus @default(PENDING)
-  trackingNo String?
-  carrier    String?
-  shippedAt  DateTime?
+  trackingNo String? // 송장 번호
+  carrier    String? // 택배사
+  shippedAt  DateTime? // 배송 시작 시간
 
   order      Order @relation(fields: [orderId], references: [id])
 }

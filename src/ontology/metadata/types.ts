@@ -1,5 +1,6 @@
-export interface OntologyMetadataSchema {
+export interface OntologyDefinition {
   objectTypes: ObjectType[];
+  linkTypes: LinkType[];
 }
 
 export interface ObjectType {

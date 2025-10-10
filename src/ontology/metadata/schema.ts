@@ -30,16 +30,26 @@ export enum PropertyScalarType {
 
 export interface LinkType {
   id: string;
-  displayName: string;
-  description: string;
-  from: string;
-  to: string;
-  cardinality: LinkCardinality;
+  objectTypes: [string, string];
+  cardinality: [LinkCardinality, LinkCardinality];
+  key:
+    | {
+        type: "foreignKey";
+        side: "left" | "right";
+        foreignKeyProperty: string;
+        primaryKeyProperty: string;
+      }
+    | {
+        type: "joinTable";
+        leftSideForeignKeyProperty: string;
+        rightSideForeignKeyProperty: string;
+      };
+  displayName: [string, string];
+  pluralDisplayName?: [string | null, string | null];
+  description?: [string | null, string | null];
 }
 
 export enum LinkCardinality {
-  ONE_TO_ONE = "one_to_one",
-  ONE_TO_MANY = "one_to_many",
-  MANY_TO_ONE = "many_to_one",
-  MANY_TO_MANY = "many_to_many",
+  ONE = "one",
+  MANY = "many",
 }

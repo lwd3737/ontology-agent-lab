@@ -5,21 +5,20 @@ export interface OntologyMetadataSchema {
 export interface ObjectType {
   id: string;
   displayName: string;
-  description: string;
-  properties: PropertyDefinition[];
+  description?: string;
+  properties: Property[];
 }
 
-export interface PropertyDefinition {
+export interface Property {
   id: string;
+  primaryKey?: boolean;
+  type: PropertyValueType;
   displayName: string;
-  description: string;
-  type: PropertyScalarType;
+  description?: string;
   required: boolean;
-  defaultValue?: PropertyScalarType;
-  enumValues?: { value: string; description: string }[];
 }
 
-export enum PropertyScalarType {
+export enum PropertyValueType {
   STRING = "string",
   NUMBER = "number",
   BOOLEAN = "boolean",

@@ -32,21 +32,23 @@ export interface LinkType {
   id: string;
   objectTypes: [string, string];
   cardinality: [LinkCardinality, LinkCardinality];
-  key:
-    | {
-        type: "foreignKey";
-        side: "left" | "right";
-        foreignKeyProperty: string;
-        primaryKeyProperty: string;
-      }
-    | {
-        type: "joinTable";
-        leftSideForeignKeyProperty: string;
-        rightSideForeignKeyProperty: string;
-      };
+  key: LinkForeignKey | LinkJoinTable;
   displayName: [string, string];
   pluralDisplayName?: [string | null, string | null];
   description?: [string | null, string | null];
+}
+
+interface LinkForeignKey {
+  type: "foreignKey";
+  side: "left" | "right"; // 외래키가 있는 쪽
+  foreignKeyProperty: string;
+  primaryKeyProperty: string;
+}
+
+interface LinkJoinTable {
+  type: "joinTable";
+  leftSideForeignKeyProperty: string;
+  rightSideForeignKeyProperty: string;
 }
 
 export enum LinkCardinality {

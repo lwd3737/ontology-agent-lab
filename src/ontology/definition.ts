@@ -142,12 +142,6 @@ const OntologyDefinition: OntologyDefinition = {
           primaryKey: true,
         },
         {
-          id: "customerId",
-          displayName: "CustomerID",
-          type: PropertyValueType.STRING,
-          required: true,
-        },
-        {
           id: "status",
           displayName: "Status",
           type: PropertyValueType.STRING,

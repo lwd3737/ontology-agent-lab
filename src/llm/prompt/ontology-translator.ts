@@ -29,7 +29,7 @@ export default class OntologyTranslator {
             `  required: ${property.required}`,
           ];
           if (property.primaryKey) {
-            lines.push(` primaryKey: ${property.primaryKey}`);
+            lines.push(`  primaryKey: ${property.primaryKey}`);
           }
 
           return lines.join("\n");

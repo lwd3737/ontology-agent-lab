@@ -100,7 +100,7 @@ model Product {
   stock       Int      @default(0)
   categoryId  String?
 
-  category    Category? @relation(fields: [categoryId], references: [id])
+  categories  Category[]
   reviews     Review[]
   orderLines  OrderLine[]
   cartLines   CartLine[]
@@ -132,7 +132,7 @@ model Order {
   id         String   @id @default(cuid())
   customerId String?
   status     OrderStatus @default(CREATED)
-  subtotalAmount   Decimal  // 상품 금액 합계(할인/배송비/세금 적용 전)
+  subTotalAmount   Decimal  // 상품 금액 합계(할인/배송비/세금 적용 전)
   shippingAmount   Decimal   @default(0) // 배송비
   totalAmount      Decimal  // 최종 결제 금액(Subtotal – Discount + Shipping + Tax)
   createdAt  DateTime @default(now())
@@ -172,12 +172,20 @@ model Shipment {
   orderId    String   @unique
   status     ShipmentStatus @default(PENDING)
   trackingNo String? // 송장 번호
-  carrier    String? // 택배사
+  carrierId String? // 택배사
+  carrier    Carrier? @relation(fields: [carrierId], references: [id])
   shippedAt  DateTime? // 배송 시작 시간
 
   order      Order @relation(fields: [orderId], references: [id])
 }
 
+
+model Carrier {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  shipments Shipment[]
+}
 // Review
 model Review {
   id         String   @id @default(cuid())

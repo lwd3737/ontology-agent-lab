@@ -10,6 +10,7 @@ export interface ObjectType {
   properties: Property[];
 }
 
+// 비즈니스 속성
 export interface Property {
   id: string;
   primaryKey?: boolean;
@@ -47,8 +48,8 @@ interface LinkForeignKey {
 
 interface LinkJoinTable {
   type: "joinTable";
-  leftSideForeignKeyProperty: string;
-  rightSideForeignKeyProperty: string;
+  leftPrimaryKeyProperty: string;
+  rightPrimaryKeyProperty: string;
 }
 
 export enum LinkCardinality {

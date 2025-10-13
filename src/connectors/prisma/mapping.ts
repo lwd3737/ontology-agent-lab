@@ -1,12 +1,12 @@
 interface OntologyPrismaMapping {
-	[objectType: string]: {
-		model: string;
-		propertyMapping: {
-			[property: string]: ModelField;
-		};
-	};
+  [objectType: string]: {
+    model: string;
+    fields: {
+      [propertyId: string]: ModelField;
+    };
+  };
 }
 
 type ModelField = string;
 
-export const OntologyPrismaMapping = {};
+export const OntologyPrismaMapping: OntologyPrismaMapping = {};

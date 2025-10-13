@@ -35,8 +35,7 @@ export interface LinkType {
   cardinality: [LinkCardinality, LinkCardinality];
   key: LinkForeignKey | LinkJoinTable;
   displayName: [string, string];
-  pluralDisplayName?: [string | null, string | null];
-  description?: [string | null, string | null];
+  description?: string;
 }
 
 interface LinkForeignKey {

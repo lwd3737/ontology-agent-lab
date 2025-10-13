@@ -1,4 +1,4 @@
-interface OntologyPrismaMapping {
+interface OntologyToPrismaMapping {
   [objectType: string]: {
     model: string;
     fields: {
@@ -10,7 +10,7 @@ interface OntologyPrismaMapping {
   };
 }
 
-export const OntologyPrismaMapping: OntologyPrismaMapping = {
+export const OntologyToPrismaMapping: OntologyToPrismaMapping = {
   customer: {
     model: "Customer",
     fields: {

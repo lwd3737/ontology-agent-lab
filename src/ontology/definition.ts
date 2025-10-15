@@ -2,7 +2,7 @@ import {
   LinkCardinality,
   PropertyValueType,
   type OntologyDefinition,
-} from "./metadata/types";
+} from "./metadata/ontology-type-schema";
 
 const OntologyDefinition: OntologyDefinition = {
   objectTypes: [

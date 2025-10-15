@@ -1,9 +1,9 @@
 import type OntologyDefinition from "@/ontology/definition";
 
-export default class OntologyTranslator {
+export default class OntologyToPromptTranslator {
   constructor(private readonly ontology: OntologyDefinition) {}
 
-  public translate(): string {
+  public execute(): string {
     const objectTypes = this.translateObjectTypes();
     const linkTypes = this.translateLinkTypes();
 

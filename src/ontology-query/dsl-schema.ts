@@ -9,8 +9,8 @@ export interface PipelineStep {
   node: QueryNode;
 }
 
-interface SharedQueryNode<Type> {
-  type: Type;
+interface SharedQueryNode<QueryType> {
+  type: QueryType;
   objectType: string;
   filter: QueryFilter;
 }
@@ -27,7 +27,7 @@ export interface LoadQueryNode extends SharedQueryNode<"load"> {
 export type QueryFilter = CompareOperator;
 
 export interface CompareOperator {
-  op: "eq" | "gt" | "gte" | "lt" | "lte";
+  operator: "eq" | "gt" | "gte" | "lt" | "lte";
   field: string;
   value: ScalarType;
 }

@@ -6,17 +6,20 @@
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "eval": "vitest run --config ls.vitest.config.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.52",
     "@prisma/client": "6.16.3",
     "ai": "^5.0.70",
+    "langsmith": "^0.3.75",
     "next": "15.5.4",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "vitest": "^3.2.4",
-    "zod": "^4.1.12"
+    "vitest": "^4.0.4",
+    "zod": "^4.1.12",
+    "zod-to-json-schema": "^3.24.6"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
@@ -24,6 +27,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv": "^17.2.3",
     "eslint": "^9",
     "eslint-config-next": "15.5.4",
     "prisma": "^6.16.3",

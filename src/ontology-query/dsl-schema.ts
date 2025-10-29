@@ -1,5 +1,4 @@
 import { PropertyValueType } from "@/ontology/metadata/ontology-type-schema";
-import type { Schema } from "ai";
 import { z } from "zod";
 
 export interface OntologyQueryDSL {
@@ -41,31 +40,54 @@ export type ScalarType =
   | PropertyValueType.DATETIME
   | PropertyValueType.ENUM;
 
-const scalarType: z.ZodType<ScalarType> = z.enum([
-  PropertyValueType.NUMBER,
-  PropertyValueType.STRING,
-  PropertyValueType.BOOLEAN,
-  PropertyValueType.DATETIME,
-  PropertyValueType.ENUM,
-]);
+// validation schema
+const ScalarTypeSchema: z.ZodType<ScalarType> = z
+  .enum([
+    PropertyValueType.NUMBER,
+    PropertyValueType.STRING,
+    PropertyValueType.BOOLEAN,
+    PropertyValueType.DATETIME,
+    PropertyValueType.ENUM,
+  ])
+  .describe("The type of the scalar value for property.");
 
-const queryFilter: z.ZodType<QueryFilter> = z.object({
-  op: z.enum(["eq", "gt", "gte", "lt", "lte"]),
-  field: z.string(),
-  value: scalarType,
-});
-
-const queryNode: z.ZodType<QueryNode> = z.object({
-  type: z.enum(["load"]),
-  objectType: z.string(),
-  filter: queryFilter,
-});
-
-export const ontologyQueryDsl: z.ZodType<OntologyQueryDSL> = z.object({
-  pipeline: z.array(
-    z.object({
-      name: z.string(),
-      node: queryNode,
-    })
+const QueryFilterSchema: z.ZodType<QueryFilter> = z.object({
+  op: z
+    .enum(["eq", "gt", "gte", "lt", "lte"])
+    .describe("The operator to use for the filter."),
+  field: z
+    .string()
+    .describe(
+      "The name of the property of the ontology object type to filter."
+    ),
+  value: ScalarTypeSchema.describe(
+    "The value of the property to filter the records."
   ),
+});
+
+const QueryNodeSchema: z.ZodType<QueryNode> = z.object({
+  type: z.enum(["load"]).describe("The type of the query node."),
+  objectType: z.string().describe("The ontology object type to query."),
+  filter: QueryFilterSchema.describe("WHERE conditions to filter records"),
+});
+
+const PipelineStepSchema: z.ZodType<PipelineStep> = z.object({
+  name: z
+    .string()
+    .describe(
+      "Unique pipeline step name. The name should express the meaning of the query step."
+    ),
+  node: QueryNodeSchema.describe("Query configuration for this step."),
+});
+
+export const OntologyQueryDslSchema: z.ZodType<OntologyQueryDSL> = z.object({
+  pipeline: z
+    .array(
+      PipelineStepSchema.describe(
+        "Single pipeline step containing a query node"
+      )
+    )
+    .describe(
+      "The pipeline of the query DSL. The pipeline is a list of steps that are executed sequentially."
+    ),
 });

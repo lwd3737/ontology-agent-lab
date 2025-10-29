@@ -10,13 +10,17 @@ import {
 import * as ai from "ai";
 import { wrapAISDK } from "langsmith/experimental/vercel";
 import { traceable } from "langsmith/traceable";
+import type QueryCompiler from "@/connector/query-compiler";
 
 const { generateObject } = wrapAISDK(ai);
 
 export default class NLToQueryChatService {
   private readonly queryDSLGeneratorPrompt: string;
 
-  constructor(private readonly ontology: OntologyDefinition) {
+  constructor(
+    private readonly ontology: OntologyDefinition,
+    private readonly queryCompiler: QueryCompiler
+  ) {
     const translator = new OntologyToPromptTranslator(ontology);
     this.queryDSLGeneratorPrompt = generateQueryDslPrompt(translator.execute());
 
@@ -25,7 +29,9 @@ export default class NLToQueryChatService {
     });
   }
 
-  public async ask(messages: UIMessage[]) {}
+  public async ask(messages: UIMessage[]) {
+    const queryDSL = await this.generateQueryDsl(messages);
+  }
 
   public async generateQueryDsl(
     messages: UIMessage[]

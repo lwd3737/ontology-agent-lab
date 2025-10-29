@@ -12,6 +12,7 @@ import z from "zod";
 import OntologyToPromptTranslator from "@/llm/adapter/ontology-to-prompt-translator";
 import zodToJsonSchema from "zod-to-json-schema";
 import { describe, expect } from "vitest";
+import PrismaClientCompiler from "@/connector/prisma/prisma-client-compiler";
 
 describe("NL to prisma query chat service", () => {
   ls.describe("Query DSL 생성", () => {
@@ -70,7 +71,10 @@ describe("NL to prisma query chat service", () => {
       "다양한 쿼리 패턴 생성 성공",
 
       async ({ inputs }) => {
-        const service = new NLToQueryChatService(OntologyDefinition);
+        const service = new NLToQueryChatService(
+          OntologyDefinition,
+          new PrismaClientCompiler()
+        );
         const queryDSL = await service.generateQueryDsl([
           {
             id: "1",

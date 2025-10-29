@@ -1,4 +1,3 @@
-import { PropertyValueType } from "@/ontology/metadata/ontology-type-schema";
 import { z } from "zod";
 
 export interface OntologyQueryDSL {

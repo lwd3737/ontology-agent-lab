@@ -38,7 +38,6 @@ export default class NLToQueryChatService {
       schema: OntologyQueryDslSchema,
       schemaDescription:
         "QueryDSL is a JSON object that represents a query to the database.",
-      temperature: 0,
       maxRetries: 3,
     });
 

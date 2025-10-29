@@ -24,7 +24,7 @@ export enum PropertyValueType {
   STRING = "string",
   NUMBER = "number",
   BOOLEAN = "boolean",
-  DATETIME = "datetime",
+  TIMESTAMP = "timestamp",
   ENUM = "enum",
   JSON = "json",
 }

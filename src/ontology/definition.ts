@@ -168,7 +168,7 @@ const OntologyDefinition: OntologyDefinition = {
         {
           id: "createdAt",
           displayName: "CreatedAt",
-          type: PropertyValueType.DATETIME,
+          type: PropertyValueType.TIMESTAMP,
           required: true,
         },
         {
@@ -238,7 +238,7 @@ const OntologyDefinition: OntologyDefinition = {
         {
           id: "shippedAt",
           displayName: "Shipped At",
-          type: PropertyValueType.DATETIME,
+          type: PropertyValueType.TIMESTAMP,
           required: false,
         },
       ],

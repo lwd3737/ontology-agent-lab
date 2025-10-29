@@ -13,7 +13,7 @@ export interface PipelineStep {
 interface SharedQueryNode<QueryType> {
   type: QueryType;
   objectType: string;
-  filter: QueryFilter;
+  filter?: QueryFilterCondition;
 }
 
 export type QueryNode = LoadQueryNode;
@@ -25,7 +25,7 @@ export interface LoadQueryNode extends SharedQueryNode<"load"> {
   };
 }
 
-export type QueryFilter = CompareOperator;
+export type QueryFilterCondition = CompareOperator;
 
 export interface CompareOperator {
   op: "eq" | "gt" | "gte" | "lt" | "lte";
@@ -33,25 +33,21 @@ export interface CompareOperator {
   value: ScalarType;
 }
 
-export type ScalarType =
-  | PropertyValueType.NUMBER
-  | PropertyValueType.STRING
-  | PropertyValueType.BOOLEAN
-  | PropertyValueType.DATETIME
-  | PropertyValueType.ENUM;
+export type ScalarType = number | string | boolean | Timestamp;
+
+export type Timestamp = string; // ISO 8601 format (YYYY-MM-DDTHH:MM:SS.SSSZ)
 
 // validation schema
 const ScalarTypeSchema: z.ZodType<ScalarType> = z
-  .enum([
-    PropertyValueType.NUMBER,
-    PropertyValueType.STRING,
-    PropertyValueType.BOOLEAN,
-    PropertyValueType.DATETIME,
-    PropertyValueType.ENUM,
+  .union([
+    z.number(),
+    z.string(),
+    z.boolean(),
+    z.string().describe("ISO 8601 format (YYYY-MM-DDTHH:MM:SS.SSSZ)"),
   ])
   .describe("The type of the scalar value for property.");
 
-const QueryFilterSchema: z.ZodType<QueryFilter> = z.object({
+const QueryFilterSchema: z.ZodType<QueryFilterCondition> = z.object({
   op: z
     .enum(["eq", "gt", "gte", "lt", "lte"])
     .describe("The operator to use for the filter."),
@@ -68,7 +64,9 @@ const QueryFilterSchema: z.ZodType<QueryFilter> = z.object({
 const QueryNodeSchema: z.ZodType<QueryNode> = z.object({
   type: z.enum(["load"]).describe("The type of the query node."),
   objectType: z.string().describe("The ontology object type to query."),
-  filter: QueryFilterSchema.describe("WHERE conditions to filter records"),
+  filter: QueryFilterSchema.optional().describe(
+    "WHERE conditions to filter records"
+  ),
 });
 
 const PipelineStepSchema: z.ZodType<PipelineStep> = z.object({

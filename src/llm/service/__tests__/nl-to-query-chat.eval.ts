@@ -12,6 +12,7 @@ import z from "zod";
 import OntologyToPromptTranslator from "@/llm/adapter/ontology-to-prompt-translator";
 import zodToJsonSchema from "zod-to-json-schema";
 import { describe } from "vitest";
+import { expect } from "langsmith/jest";
 
 describe("NL to prisma query chat service", () => {
   ls.describe("Query DSL 생성", () => {
@@ -21,8 +22,53 @@ describe("NL to prisma query chat service", () => {
           userQuery: "모든 고객을 조회해줘",
         },
       },
+      {
+        inputs: {
+          userQuery: "이름에 'John'이 포함된 고객을 찾아줘",
+        },
+      },
+      {
+        inputs: {
+          userQuery: "가격이 100보다 큰 모든 제품을 가져와줘",
+        },
+      },
+      {
+        inputs: {
+          userQuery: "2024년 1월 1일 이후에 생성된 주문을 찾아줘",
+        },
+      },
+      {
+        inputs: {
+          userQuery: "재고가 10 이하인 제품들을 가져와줘",
+        },
+      },
+      {
+        inputs: {
+          userQuery: "전화번호가 '123-456-7890'인 고객을 찾아줘",
+        },
+      },
+      {
+        inputs: {
+          userQuery: "모든 카테고리를 가져와줘",
+        },
+      },
+      {
+        inputs: {
+          userQuery: "상태가 'shipped'인 배송을 찾아줘",
+        },
+      },
+      {
+        inputs: {
+          userQuery: "가격이 50 이상이고 재고가 5 이상인 제품을 찾아줘",
+        },
+      },
+      {
+        inputs: {
+          userQuery: "총 금액이 1000보다 큰 주문을 찾아줘",
+        },
+      },
     ])(
-      "단순 조회 쿼리 생성 성공",
+      "다양한 쿼리 패턴 생성 성공",
 
       async ({ inputs }) => {
         const service = new NLToQueryChatService(OntologyDefinition);
@@ -106,11 +152,15 @@ describe("NL to prisma query chat service", () => {
           };
         };
 
-        const evaluator = ls.wrapEvaluator(queryDSLEvaluator);
-        await evaluator({
+        const evaluate = ls.wrapEvaluator(queryDSLEvaluator);
+        const evaluation = await evaluate({
           outputs: queryDSL,
         });
-      }
+        console.log(JSON.stringify({ queryDSL, evaluation }, null, 2));
+
+        expect(evaluation.score).toBeGreaterThanOrEqual(0.8);
+      },
+      1000000
     );
   });
 });

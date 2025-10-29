@@ -11,8 +11,7 @@ import { openai } from "@ai-sdk/openai";
 import z from "zod";
 import OntologyToPromptTranslator from "@/llm/adapter/ontology-to-prompt-translator";
 import zodToJsonSchema from "zod-to-json-schema";
-import { describe } from "vitest";
-import { expect } from "langsmith/jest";
+import { describe, expect } from "vitest";
 
 describe("NL to prisma query chat service", () => {
   ls.describe("Query DSL 생성", () => {
@@ -97,12 +96,16 @@ describe("NL to prisma query chat service", () => {
 
           const instruction = [
             "You are a strict judge for Natural Language to Query DSL based on the ontology.",
-            "Scoring rubric (0~1 each):",
+            "",
+            "# Scoring rubric (0~1 each):",
             "- intent: Does DSL target the correct object(s) for the user intent?",
             "- ontologyGroundingAccuracy: Do objectType/property/linkType exist and match ontology semantics?",
             "- queryConstraintSatisfaction: Does the DSL correctly capture the user's constraints?",
             "- queryStructure: Is the DSL structurally minimal and appropriate?",
             "Overall pass = score >= 0.8 AND no critical ontology errors.",
+            "",
+            "# Evaluation",
+            "- ",
           ].join("\n");
           const prompt = [
             "# Ontology Definition",

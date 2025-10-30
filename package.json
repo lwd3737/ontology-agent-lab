@@ -11,10 +11,11 @@
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.52",
-    "@prisma/client": "6.16.3",
+    "@prisma/client": "^6.18.0",
     "ai": "^5.0.70",
     "langsmith": "^0.3.75",
     "next": "15.5.4",
+    "prisma": "^6.18.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "vitest": "^4.0.4",
@@ -30,7 +31,6 @@
     "dotenv": "^17.2.3",
     "eslint": "^9",
     "eslint-config-next": "15.5.4",
-    "prisma": "^6.16.3",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

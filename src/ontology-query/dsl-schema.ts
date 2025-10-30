@@ -15,21 +15,36 @@ interface SharedQueryNode<QueryType> {
   filter?: QueryFilterCondition;
 }
 
-export type QueryNode = LoadQueryNode;
+export type QueryNode = ListQueryNode;
 
-export interface LoadQueryNode extends SharedQueryNode<"load"> {
-  select?: string[];
-  orderBy?: {
-    fields: string[];
-  };
+export interface ListQueryNode extends SharedQueryNode<QueryNodeType.LIST> {
+  properties?: string[];
+  orderBy?: OrderBy;
+}
+
+export enum QueryNodeType {
+  LIST = "list",
 }
 
 export type QueryFilterCondition = CompareOperator;
 
 export interface CompareOperator {
-  op: "eq" | "gt" | "gte" | "lt" | "lte";
-  field: string;
+  type: CompareOperatorType;
+  // field: string;
+  propertyId: string;
   value: ScalarType;
+}
+
+export enum CompareOperatorType {
+  EQ = "eq",
+  GT = "gt",
+  GTE = "gte",
+  LT = "lt",
+  LTE = "lte",
+}
+
+export interface OrderBy {
+  fields: { field: string; direction: "asc" | "desc" }[];
 }
 
 export type ScalarType = number | string | boolean | Timestamp;
@@ -47,26 +62,52 @@ const ScalarTypeSchema: z.ZodType<ScalarType> = z
   .describe("The type of the scalar value for property.");
 
 const QueryFilterSchema: z.ZodType<QueryFilterCondition> = z.object({
-  op: z
-    .enum(["eq", "gt", "gte", "lt", "lte"])
+  type: z
+    .enum(CompareOperatorType)
     .describe("The operator to use for the filter."),
-  field: z
-    .string()
-    .describe(
-      "The name of the property of the ontology object type to filter."
-    ),
+  propertyId: z.string().describe("The id of the property to filter."),
+  // field: z
+  //   .string()
+  //   .describe(
+  //     "The name of field of the ontology object type to filter. The name should be in the format of 'properties.<propertyId>'."
+  //   ),
   value: ScalarTypeSchema.describe(
     "The value of the property to filter the records."
   ),
 });
 
-const QueryNodeSchema: z.ZodType<QueryNode> = z.object({
-  type: z.enum(["load"]).describe("The type of the query node."),
+const OrderBySchema: z.ZodType<OrderBy> = z.object({
+  fields: z
+    .array(
+      z.object({
+        field: z.string().describe("The field to order by."),
+        direction: z
+          .enum(["asc", "desc"])
+          .describe("The direction to order by."),
+      })
+    )
+    .describe("ORDER BY conditions to sort records"),
+});
+
+const SharedQueryNodeSchema = z.object({
+  // type: z.enum(QueryNodeType).describe("The type of the query node."),
   objectType: z.string().describe("The ontology object type to query."),
+  properties: z
+    .array(z.string())
+    .optional()
+    .describe("The properties to query."),
   filter: QueryFilterSchema.optional().describe(
     "WHERE conditions to filter records"
   ),
 });
+
+const ListQueryNodeSchema: z.ZodType<ListQueryNode> =
+  SharedQueryNodeSchema.extend({
+    type: z.literal(QueryNodeType.LIST),
+    orderBy: OrderBySchema.optional().describe(
+      "ORDER BY conditions to sort records"
+    ),
+  });
 
 const PipelineStepSchema: z.ZodType<PipelineStep> = z.object({
   name: z
@@ -74,7 +115,9 @@ const PipelineStepSchema: z.ZodType<PipelineStep> = z.object({
     .describe(
       "Unique pipeline step name. The name should express the meaning of the query step."
     ),
-  node: QueryNodeSchema.describe("Query configuration for this step."),
+  node: z.union([
+    ListQueryNodeSchema.describe("Query configuration for this step."),
+  ]),
 });
 
 export const OntologyQueryDslSchema: z.ZodType<OntologyQueryDSL> = z.object({

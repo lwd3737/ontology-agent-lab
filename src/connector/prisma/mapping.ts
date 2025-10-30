@@ -1,12 +1,16 @@
-interface OntologyToPrismaMapping {
-  [objectType: string]: {
-    model: string;
-    fields: {
-      [propertyId: string]: {
-        name: string;
-        type?: string;
-      };
-    };
+export interface OntologyToPrismaMapping {
+  [objectType: string]: PrismaModelMapping;
+}
+
+export interface PrismaModelMapping {
+  model: string;
+  fields: PrismaFieldsMapping;
+}
+
+export interface PrismaFieldsMapping {
+  [propertyId: string]: {
+    name: string;
+    // type?: string; // 기본 타입 변환과 다를 때 사용
   };
 }
 

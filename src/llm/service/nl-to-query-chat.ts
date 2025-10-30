@@ -31,6 +31,7 @@ export default class NLToQueryChatService {
 
   public async ask(messages: UIMessage[]) {
     const queryDSL = await this.generateQueryDsl(messages);
+    this.queryCompiler.compileFromQueryDSL(queryDSL);
   }
 
   public async generateQueryDsl(

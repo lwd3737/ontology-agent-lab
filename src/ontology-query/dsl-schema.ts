@@ -17,30 +17,18 @@ interface SharedQueryNode<QueryType> {
 
 export type QueryNode = ListQueryNode;
 
-export interface ListQueryNode extends SharedQueryNode<QueryNodeType.LIST> {
+export interface ListQueryNode extends SharedQueryNode<"list"> {
   properties?: string[];
   orderBy?: OrderBy;
-}
-
-export enum QueryNodeType {
-  LIST = "list",
 }
 
 export type QueryFilterCondition = CompareOperator;
 
 export interface CompareOperator {
-  type: CompareOperatorType;
+  type: "eq" | "gt" | "gte" | "lt" | "lte";
   // field: string;
   propertyId: string;
   value: ScalarType;
-}
-
-export enum CompareOperatorType {
-  EQ = "eq",
-  GT = "gt",
-  GTE = "gte",
-  LT = "lt",
-  LTE = "lte",
 }
 
 export interface OrderBy {
@@ -63,7 +51,7 @@ const ScalarTypeSchema: z.ZodType<ScalarType> = z
 
 const QueryFilterSchema: z.ZodType<QueryFilterCondition> = z.object({
   type: z
-    .enum(CompareOperatorType)
+    .enum(["eq", "gt", "gte", "lt", "lte"])
     .describe("The operator to use for the filter."),
   propertyId: z.string().describe("The id of the property to filter."),
   // field: z
@@ -103,7 +91,7 @@ const SharedQueryNodeSchema = z.object({
 
 const ListQueryNodeSchema: z.ZodType<ListQueryNode> =
   SharedQueryNodeSchema.extend({
-    type: z.literal(QueryNodeType.LIST),
+    type: z.enum(["list"]),
     orderBy: OrderBySchema.optional().describe(
       "ORDER BY conditions to sort records"
     ),

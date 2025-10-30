@@ -1,6 +1,4 @@
 import {
-  CompareOperatorType,
-  QueryNodeType,
   type ListQueryNode,
   type OntologyQueryDSL,
   type OrderBy,
@@ -15,7 +13,9 @@ export interface PrismaQuery {
   model: string;
   queryMethod: string;
   args?: {
+    select?: SelectClause;
     where?: WhereClause;
+    orderBy?: OrderByClause;
   };
 }
 interface PrismaQueryArgs {
@@ -37,13 +37,13 @@ interface OrderByClause {
   [field: string]: "asc" | "desc";
 }
 export default class PrismaClientCompiler implements QueryCompiler {
-  public compileFromQueryDSL(queryDSL: OntologyQueryDSL) {
-    queryDSL.pipeline.map(this.buildQuery.bind(this));
+  public compileFromQueryDSL(queryDSL: OntologyQueryDSL): PrismaQuery[] {
+    return queryDSL.pipeline.map(this.buildQuery.bind(this));
   }
 
   private buildQuery(step: PipelineStep) {
     switch (step.node.type) {
-      case QueryNodeType.LIST:
+      case "list":
         return this.buildListQuery(step.node);
       default:
         throw new Error(`Unsupported query node type: ${step.node.type}`);
@@ -112,11 +112,11 @@ export default class PrismaClientCompiler implements QueryCompiler {
     }
 
     switch (filter.type) {
-      case CompareOperatorType.EQ:
-      case CompareOperatorType.GT:
-      case CompareOperatorType.GTE:
-      case CompareOperatorType.LT:
-      case CompareOperatorType.LTE:
+      case "eq":
+      case "gt":
+      case "gte":
+      case "lt":
+      case "lte":
         return {
           [prismaField.name]: {
             [filter.type]: filter.value,

@@ -27,18 +27,21 @@ export default class NLToQueryChatService {
     this.generateQueryDsl = traceable(this.generateQueryDsl.bind(this), {
       name: "generateQueryDSL",
     });
+    this.compileQueryDSL = traceable(this.compileQueryDSL.bind(this), {
+      name: "compileQueryDSL",
+    });
   }
 
   public async ask(messages: UIMessage[]) {
     const queryDSL = await this.generateQueryDsl(messages);
-    this.queryCompiler.compileFromQueryDSL(queryDSL);
+    const compiledQuery = await this.compileQueryDSL(queryDSL);
   }
 
   public async generateQueryDsl(
     messages: UIMessage[]
   ): Promise<OntologyQueryDSL> {
     const result = await generateObject({
-      model: openai("gpt-5"),
+      model: openai("gpt-5-mini"),
       system: this.queryDSLGeneratorPrompt,
       messages: convertToModelMessages(messages),
       schemaName: "QueryDsl",
@@ -46,8 +49,19 @@ export default class NLToQueryChatService {
       schemaDescription:
         "QueryDSL is a JSON object that represents a query to the database.",
       maxRetries: 3,
+      providerOptions: {
+        openai: {
+          reasoning: {
+            effort: "low",
+          },
+        },
+      },
     });
 
     return result.object;
+  }
+
+  private async compileQueryDSL(queryDSL: OntologyQueryDSL) {
+    return this.queryCompiler.compileFromQueryDSL(queryDSL);
   }
 }

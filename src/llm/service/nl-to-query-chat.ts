@@ -11,6 +11,7 @@ import * as ai from "ai";
 import { wrapAISDK } from "langsmith/experimental/vercel";
 import { traceable } from "langsmith/traceable";
 import type QueryCompiler from "@/connector/query-compiler";
+import executePrismaQuery from "@/connector/prisma/prisma-query-executor";
 
 const { generateObject } = wrapAISDK(ai);
 
@@ -35,6 +36,7 @@ export default class NLToQueryChatService {
   public async ask(messages: UIMessage[]) {
     const queryDSL = await this.generateQueryDsl(messages);
     const compiledQuery = await this.compileQueryDSL(queryDSL);
+    const queryResult = await executePrismaQuery(compiledQuery);
   }
 
   public async generateQueryDsl(

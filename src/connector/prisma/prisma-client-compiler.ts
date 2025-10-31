@@ -12,11 +12,7 @@ import { OntologyToPrismaMapping, type PrismaFieldsMapping } from "./mapping";
 export interface PrismaQuery {
   model: string;
   queryMethod: string;
-  args?: {
-    select?: SelectClause;
-    where?: WhereClause;
-    orderBy?: OrderByClause;
-  };
+  args?: PrismaQueryArgs;
 }
 interface PrismaQueryArgs {
   select?: SelectClause;

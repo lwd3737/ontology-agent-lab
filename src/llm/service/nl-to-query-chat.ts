@@ -1,4 +1,4 @@
-import type OntologyDefinition from "@/ontology/definition";
+import OntologyDefinition from "@/ontology/ontology-definition";
 import OntologyToPromptTranslator from "@/llm/adapter/ontology-to-prompt-translator";
 import { openai } from "@ai-sdk/openai";
 import { convertToModelMessages, type UIMessage } from "ai";
@@ -12,18 +12,23 @@ import { wrapAISDK } from "langsmith/experimental/vercel";
 import { traceable } from "langsmith/traceable";
 import type QueryCompiler from "@/connector/query-compiler";
 import executePrismaQuery from "@/connector/prisma/prisma-query-executor";
+import PrismaQueryResultToOntologyTranslator from "@/connector/prisma/query-result-to-ontology-translator";
 
 const { generateObject } = wrapAISDK(ai);
 
 export default class NLToQueryChatService {
   private readonly queryDSLGeneratorPrompt: string;
+  private readonly ontologyToPromptTranslator: OntologyToPromptTranslator;
+  private readonly prismaQueryResultToOntologyTranslator =
+    new PrismaQueryResultToOntologyTranslator();
 
   constructor(
     private readonly ontology: OntologyDefinition,
     private readonly queryCompiler: QueryCompiler
   ) {
-    const translator = new OntologyToPromptTranslator(ontology);
-    this.queryDSLGeneratorPrompt = generateQueryDslPrompt(translator.execute());
+    this.ontologyToPromptTranslator = new OntologyToPromptTranslator(ontology);
+    const ontologyContext = this.ontologyToPromptTranslator.execute();
+    this.queryDSLGeneratorPrompt = generateQueryDslPrompt(ontologyContext);
 
     this.generateQueryDsl = traceable(this.generateQueryDsl.bind(this), {
       name: "generateQueryDSL",
@@ -31,12 +36,28 @@ export default class NLToQueryChatService {
     this.compileQueryDSL = traceable(this.compileQueryDSL.bind(this), {
       name: "compileQueryDSL",
     });
+    this.translatePrismaQueryResultToOntology = traceable(
+      this.translatePrismaQueryResultToOntology.bind(this),
+      {
+        name: "translatePrismaQueryResultToOntology",
+      }
+    );
   }
 
   public async ask(messages: UIMessage[]) {
     const queryDSL = await this.generateQueryDsl(messages);
-    const compiledQuery = await this.compileQueryDSL(queryDSL);
-    const queryResult = await executePrismaQuery(compiledQuery);
+    const compiledQueries = await this.compileQueryDSL(queryDSL);
+
+    // 첫 번째 쿼리만 실행 (나중에 여러 쿼리 지원 확장 가능)
+    if (compiledQueries.length === 0) {
+      throw new Error("No compiled queries found");
+    }
+
+    const queryResult = await executePrismaQuery(compiledQueries[0]);
+    // const instances = await this.mapPrismaQueryResultToOntology(
+    //   queryDSL,
+    //   queryResult
+    // );
   }
 
   public async generateQueryDsl(
@@ -65,5 +86,15 @@ export default class NLToQueryChatService {
 
   private async compileQueryDSL(queryDSL: OntologyQueryDSL) {
     return this.queryCompiler.compileFromQueryDSL(queryDSL);
+  }
+
+  public async translatePrismaQueryResultToOntology(
+    queryResult: any,
+    queryDSL: OntologyQueryDSL
+  ) {
+    return this.prismaQueryResultToOntologyTranslator.translate(
+      queryResult,
+      queryDSL
+    );
   }
 }

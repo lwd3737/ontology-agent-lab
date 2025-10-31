@@ -1,4 +1,4 @@
-import OntologyDefinition from "@/ontology/definition";
+import OntologyDefinition from "@/ontology/ontology-definition";
 import * as ls from "langsmith/vitest";
 import NLToQueryChatService from "../nl-to-query-chat";
 import { describe, expect } from "vitest";
@@ -106,7 +106,7 @@ describe("NL to prisma query chat service", () => {
             pipeline: [
               {
                 name: "list_all_customers",
-                node: {
+                query: {
                   objectType: "customer",
                   properties: ["id", "name", "phone"],
                   type: "list",
@@ -137,7 +137,7 @@ describe("NL to prisma query chat service", () => {
             pipeline: [
               {
                 name: "list_categories",
-                node: {
+                query: {
                   objectType: "category",
                   properties: ["id", "name"],
                   type: "list",

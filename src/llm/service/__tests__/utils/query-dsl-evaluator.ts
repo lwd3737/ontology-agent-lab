@@ -3,7 +3,7 @@ import {
   OntologyQueryDslSchema,
   type OntologyQueryDSL,
 } from "@/ontology-query/dsl-schema";
-import OntologyDefinition from "@/ontology/definition";
+import OntologyDefinition from "@/ontology/ontology-definition";
 import { openai } from "@ai-sdk/openai";
 import { generateObject } from "ai";
 import z from "zod";

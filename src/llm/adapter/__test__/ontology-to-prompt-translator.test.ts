@@ -1,4 +1,4 @@
-import OntologyDefinition from "@/ontology/definition";
+import OntologyDefinition from "@/ontology/ontology-definition";
 import { describe, expect, it } from "vitest";
 import OntologyToPromptTranslator from "../ontology-to-prompt-translator";
 

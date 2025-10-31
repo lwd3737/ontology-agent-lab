@@ -1,11 +1,14 @@
-import type OntologyDefinition from "@/ontology/definition";
+import type OntologyDefinition from "@/ontology/ontology-definition";
 
 export default class OntologyToPromptTranslator {
   constructor(private readonly ontology: OntologyDefinition) {}
 
-  public execute(): string {
-    const objectTypes = this.translateObjectTypes();
-    const linkTypes = this.translateLinkTypes();
+  public execute(filter?: {
+    objectTypeIds?: string[];
+    linkTypeIds?: string[];
+  }): string {
+    const objectTypes = this.translateObjectTypes(filter?.objectTypeIds);
+    const linkTypes = this.translateLinkTypes(filter?.linkTypeIds);
 
     return [
       "# Ontology Definition",
@@ -18,8 +21,13 @@ export default class OntologyToPromptTranslator {
     ].join("\n");
   }
 
-  private translateObjectTypes(): string {
-    const blocks = this.ontology.objectTypes.map((objectType) => {
+  private translateObjectTypes(objectTypeIds?: string[]): string {
+    const targetObjectTypes = objectTypeIds
+      ? this.ontology.objectTypes.filter((objectType) =>
+          objectTypeIds.some((objectTypeId) => objectTypeId === objectType.id)
+        )
+      : this.ontology.objectTypes;
+    const blocks = targetObjectTypes.map((objectType) => {
       const properties = objectType.properties
         .map((property) => {
           const lines = [
@@ -52,8 +60,13 @@ export default class OntologyToPromptTranslator {
     return blocks.join("\n");
   }
 
-  private translateLinkTypes(): string {
-    const blocks = this.ontology.linkTypes.map((linkType) => {
+  private translateLinkTypes(linkTypeIds?: string[]): string {
+    const targetLinkTypes = linkTypeIds
+      ? this.ontology.linkTypes.filter((linkType) =>
+          linkTypeIds.some((linkTypeId) => linkTypeId === linkType.id)
+        )
+      : this.ontology.linkTypes;
+    const blocks = targetLinkTypes.map((linkType) => {
       const key =
         linkType.key.type === "foreignKey"
           ? [

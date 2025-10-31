@@ -1,5 +1,5 @@
 import {
-  type ListQueryNode,
+  type ListQuery,
   type OntologyQueryDSL,
   type OrderBy,
   type PipelineStep,
@@ -38,11 +38,11 @@ export default class PrismaClientCompiler implements QueryCompiler {
   }
 
   private buildQuery(step: PipelineStep) {
-    switch (step.node.type) {
+    switch (step.query.type) {
       case "list":
-        return this.buildListQuery(step.node);
+        return this.buildListQuery(step.query);
       default:
-        throw new Error(`Unsupported query node type: ${step.node.type}`);
+        throw new Error(`Unsupported query node type: ${step.query.type}`);
     }
   }
 
@@ -51,7 +51,7 @@ export default class PrismaClientCompiler implements QueryCompiler {
     properties,
     filter,
     orderBy,
-  }: ListQueryNode): PrismaQuery {
+  }: ListQuery): PrismaQuery {
     const prismaModelMapping = OntologyToPrismaMapping[objectType];
     if (!prismaModelMapping) {
       throw new Error(`No prisma mapping found for object type: ${objectType}`);

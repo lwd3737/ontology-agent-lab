@@ -6,18 +6,18 @@ export interface OntologyQueryDSL {
 
 export interface PipelineStep {
   name: string;
-  node: QueryNode;
+  query: Query;
 }
 
-interface SharedQueryNode<QueryType> {
+interface SharedQuery<QueryType> {
   type: QueryType;
   objectType: string;
   filter?: QueryFilterCondition;
 }
 
-export type QueryNode = ListQueryNode;
+export type Query = ListQuery;
 
-export interface ListQueryNode extends SharedQueryNode<"list"> {
+export interface ListQuery extends SharedQuery<"list"> {
   properties?: string[];
   orderBy?: OrderBy;
 }
@@ -77,7 +77,7 @@ const OrderBySchema: z.ZodType<OrderBy> = z.object({
     .describe("ORDER BY conditions to sort records"),
 });
 
-const SharedQueryNodeSchema = z.object({
+const SharedQuerySchema = z.object({
   // type: z.enum(QueryNodeType).describe("The type of the query node."),
   objectType: z.string().describe("The ontology object type to query."),
   properties: z
@@ -89,13 +89,12 @@ const SharedQueryNodeSchema = z.object({
   ),
 });
 
-const ListQueryNodeSchema: z.ZodType<ListQueryNode> =
-  SharedQueryNodeSchema.extend({
-    type: z.enum(["list"]),
-    orderBy: OrderBySchema.optional().describe(
-      "ORDER BY conditions to sort records"
-    ),
-  });
+const ListQuerySchema: z.ZodType<ListQuery> = SharedQuerySchema.extend({
+  type: z.enum(["list"]),
+  orderBy: OrderBySchema.optional().describe(
+    "ORDER BY conditions to sort records"
+  ),
+});
 
 const PipelineStepSchema: z.ZodType<PipelineStep> = z.object({
   name: z
@@ -103,8 +102,8 @@ const PipelineStepSchema: z.ZodType<PipelineStep> = z.object({
     .describe(
       "Unique pipeline step name. The name should express the meaning of the query step."
     ),
-  node: z.union([
-    ListQueryNodeSchema.describe("Query configuration for this step."),
+  query: z.union([
+    ListQuerySchema.describe("Query configuration for this step."),
   ]),
 });
 

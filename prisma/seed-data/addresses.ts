@@ -1,0 +1,42 @@
+export const addressData = [
+  {
+    customerIndex: 0,
+    name: "집",
+    phone: "010-1234-5678",
+    postalCode: "06042",
+    city: "서울특별시",
+    street: "강남구 테헤란로 123",
+  },
+  {
+    customerIndex: 0,
+    name: "회사",
+    phone: "010-1234-5678",
+    postalCode: "06578",
+    city: "서울특별시",
+    street: "서초구 서초대로 456",
+  },
+  {
+    customerIndex: 1,
+    name: "집",
+    phone: "010-2345-6789",
+    postalCode: "48058",
+    city: "부산광역시",
+    street: "해운대구 해운대해변로 789",
+  },
+  {
+    customerIndex: 2,
+    name: "집",
+    phone: "010-3456-7890",
+    postalCode: "41075",
+    city: "경기도",
+    street: "성남시 분당구 정자동 101",
+  },
+  {
+    customerIndex: 3,
+    name: "집",
+    phone: "010-4567-8901",
+    postalCode: "05201",
+    city: "서울특별시",
+    street: "강동구 천호대로 234",
+  },
+];

@@ -181,4 +181,6 @@ describe("NL to prisma query chat service", () => {
       }
     );
   });
+
+  ls.describe("", () => {});
 });

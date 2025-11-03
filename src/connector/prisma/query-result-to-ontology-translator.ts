@@ -1,12 +1,23 @@
 import type { OntologyQueryDSL } from "@/ontology-query/dsl-schema";
 import { OntologyToPrismaMapping, type PrismaFieldsMapping } from "./mapping";
 import OntologyDefinition from "@/ontology/ontology-definition";
-import type { PropertyValue } from "@/ontology/ontology-instance";
+import type {
+  ObjectInstance,
+  PropertyValue,
+} from "@/ontology/ontology-instance";
 import type { Property } from "@/ontology/metadata/ontology-type-schema";
 
+export interface PipelineStepResult {
+  stepName: string;
+  objectType: string;
+  objectInstances: ObjectInstance[];
+}
 class PrismaQueryResultToOntologyTranslator {
-  translate(queryResult: any, queryDSL: OntologyQueryDSL) {
-    queryDSL.pipeline.map((step) => {
+  translate(
+    queryResult: any,
+    queryDSL: OntologyQueryDSL
+  ): PipelineStepResult[] {
+    return queryDSL.pipeline.map((step) => {
       const { query } = step;
 
       const prismaModelMapping = OntologyToPrismaMapping[query.objectType];
@@ -16,10 +27,17 @@ class PrismaQueryResultToOntologyTranslator {
 
       switch (query.type) {
         case "list":
-          return this.translateListQueryResultToObjectInstances(queryResult, {
-            objectTypeId: query.objectType,
-            prismaFieldsMapping: prismaModelMapping.fields,
-          });
+          return {
+            stepName: step.name,
+            objectType: query.objectType,
+            objectInstances: this.translateListQueryResultToObjectInstances(
+              queryResult,
+              {
+                objectTypeId: query.objectType,
+                prismaFieldsMapping: prismaModelMapping.fields,
+              }
+            ),
+          };
         default:
           throw new Error(`Unsupported query type: ${query.type}`);
       }
@@ -29,7 +47,7 @@ class PrismaQueryResultToOntologyTranslator {
   private translateListQueryResultToObjectInstances(
     queryResult: any,
     context: { objectTypeId: string; prismaFieldsMapping: PrismaFieldsMapping }
-  ) {
+  ): ObjectInstance[] {
     const { objectTypeId, prismaFieldsMapping } = context;
 
     const objectInstances = queryResult.map((modelInstance) => {

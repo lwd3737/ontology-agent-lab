@@ -11,8 +11,9 @@ import * as ai from "ai";
 import { wrapAISDK } from "langsmith/experimental/vercel";
 import { traceable } from "langsmith/traceable";
 import type QueryCompiler from "@/connector/query-compiler";
-import executePrismaQuery from "@/connector/prisma/prisma-query-executor";
+import { executePrismaQueries } from "@/connector/prisma/prisma-query-executor";
 import PrismaQueryResultToOntologyTranslator from "@/connector/prisma/query-result-to-ontology-translator";
+import type { QueryCompileResult } from "@/connector/query-compiler";
 
 const { generateObject } = wrapAISDK(ai);
 
@@ -49,11 +50,23 @@ export default class NLToQueryChatService {
     const compiledQueries = await this.compileQueryDSL(queryDSL);
 
     // 첫 번째 쿼리만 실행 (나중에 여러 쿼리 지원 확장 가능)
-    if (compiledQueries.length === 0) {
+    if (compiledQueries.pipeline.length === 0) {
       throw new Error("No compiled queries found");
     }
 
-    const queryResult = await executePrismaQuery(compiledQueries[0]);
+    // TODO: 인터페이스로 추상화
+
+    switch (compiledQueries.type) {
+      case "prisma":
+        const queryResults = await executePrismaQueries(
+          compiledQueries.pipeline
+        );
+        break;
+      default:
+        throw new Error(
+          `Unsupported query compiler type: ${compiledQueries.type}`
+        );
+    }
     // const instances = await this.mapPrismaQueryResultToOntology(
     //   queryDSL,
     //   queryResult
@@ -84,7 +97,9 @@ export default class NLToQueryChatService {
     return result.object;
   }
 
-  private async compileQueryDSL(queryDSL: OntologyQueryDSL) {
+  private async compileQueryDSL(
+    queryDSL: OntologyQueryDSL
+  ): Promise<QueryCompileResult> {
     return this.queryCompiler.compileFromQueryDSL(queryDSL);
   }
 

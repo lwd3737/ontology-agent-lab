@@ -9,21 +9,25 @@ import {
 import type QueryCompiler from "../query-compiler";
 import { OntologyToPrismaMapping, type PrismaFieldsMapping } from "./mapping";
 
+export type PrismaQueryCompileResult = {
+  type: "prisma";
+  pipeline: PrismaQuery[];
+};
 export interface PrismaQuery {
   model: string;
   queryMethod: string;
-  args?: PrismaQueryArgs;
+  args?: PrismaListQueryArgs;
 }
-interface PrismaQueryArgs {
+export interface PrismaListQueryArgs {
   select?: SelectClause;
   where?: WhereClause;
   orderBy?: OrderByClause;
 }
 
-interface SelectClause {
+export interface SelectClause {
   [field: string]: boolean;
 }
-interface WhereClause {
+export interface WhereClause {
   [field: string]: {
     [op: string]: any;
   };
@@ -33,8 +37,13 @@ interface OrderByClause {
   [field: string]: "asc" | "desc";
 }
 export default class PrismaClientCompiler implements QueryCompiler {
-  public compileFromQueryDSL(queryDSL: OntologyQueryDSL): PrismaQuery[] {
-    return queryDSL.pipeline.map(this.buildQuery.bind(this));
+  public compileFromQueryDSL(
+    queryDSL: OntologyQueryDSL
+  ): PrismaQueryCompileResult {
+    return {
+      type: "prisma",
+      pipeline: queryDSL.pipeline.map(this.buildQuery.bind(this)),
+    };
   }
 
   private buildQuery(step: PipelineStep) {
@@ -57,7 +66,7 @@ export default class PrismaClientCompiler implements QueryCompiler {
       throw new Error(`No prisma mapping found for object type: ${objectType}`);
     }
 
-    const queryArgs: PrismaQueryArgs = {};
+    const queryArgs: PrismaListQueryArgs = {};
 
     if (properties) {
       queryArgs.select = this.buildSelectClause(

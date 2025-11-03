@@ -8,6 +8,13 @@ import PrismaClientCompiler, {
 import { queryDSLEvaluator } from "./utils/query-dsl-evaluator";
 import type { OntologyQueryDSL } from "@/ontology-query/dsl-schema";
 import { prismaClientCompilerEvaluator } from "./utils/prisma-client-compiler-evaluator";
+import type { ObjectInstance } from "@/ontology/ontology-instance";
+import PrismaQueryResultToOntologyTranslator from "@/connector/prisma/query-result-to-ontology-translator";
+import type {
+  PrismaListQueryResult,
+  PrismaQueryResult,
+} from "@/connector/prisma/prisma-query-executor";
+import queryResultToOntologyTranslationEvaluator from "./utils/query-result-to-ontology-translation-evaluator";
 
 describe("NL to prisma query chat service", () => {
   describe("Query DSL 생성", () => {
@@ -166,21 +173,118 @@ describe("NL to prisma query chat service", () => {
 
       async ({ inputs, referenceOutputs }) => {
         const compiler = new PrismaClientCompiler();
-        const compiledQueries = compiler.compileFromQueryDSL(
+        const compiledResult = compiler.compileFromQueryDSL(
           inputs.queryDSL as OntologyQueryDSL
         );
 
         const evaluate = ls.wrapEvaluator(prismaClientCompilerEvaluator);
         await evaluate({
-          output: compiledQueries,
+          output: compiledResult.pipeline,
           expected: referenceOutputs!.compiledQueries as PrismaQuery[],
         });
 
-        ls.logOutputs({ compiledQuery: compiledQueries });
-        expect(compiledQueries).toEqual(referenceOutputs!.compiledQueries);
+        ls.logOutputs({ compiledQuery: compiledResult });
+        expect(compiledResult).toEqual(referenceOutputs!.compiledQueries);
       }
     );
   });
 
-  ls.describe("", () => {});
+  ls.describe("Prisma Query 결과를 Ontology Instance로 변환", () => {
+    ls.test.each<
+      { queriesResult: PrismaListQueryResult[]; queryDSL: OntologyQueryDSL },
+      never
+      // { ontologyInstances: ObjectInstance[] }
+    >([
+      {
+        inputs: {
+          queriesResult: [
+            [
+              {
+                id: "clx1234567890",
+                name: "김민준",
+                phone: "010-1234-5678",
+              },
+              {
+                id: "clx0987654321",
+                name: "이소연",
+                phone: "010-2345-6789",
+              },
+              {
+                id: "clx1122334455",
+                name: "박지현",
+                phone: "010-3456-7890",
+              },
+            ],
+          ],
+          queryDSL: {
+            pipeline: [
+              {
+                name: "list_all_customers",
+                query: {
+                  type: "list",
+                  objectType: "customer",
+                  properties: ["id", "name", "phone"],
+                },
+              },
+            ],
+          },
+        },
+      },
+      {
+        inputs: {
+          queriesResult: [
+            [
+              {
+                id: "clxcat001",
+                name: "전자제품",
+              },
+              {
+                id: "clxcat002",
+                name: "가전제품",
+              },
+            ],
+          ],
+          queryDSL: {
+            pipeline: [
+              {
+                name: "list_categories",
+                query: {
+                  type: "list",
+                  objectType: "category",
+                  properties: ["id", "name"],
+                },
+              },
+            ],
+          },
+        },
+      },
+    ])(
+      "단순 Query 결과 변환 성공",
+
+      async ({ inputs }) => {
+        const translator = new PrismaQueryResultToOntologyTranslator();
+
+        const pipelineResult = translator.translate(
+          inputs.queriesResult,
+          inputs.queryDSL
+        );
+
+        ls.logOutputs({ pipelineResult });
+        const evaluate = ls.wrapEvaluator(
+          queryResultToOntologyTranslationEvaluator
+        );
+        const evaluation = await evaluate({
+          inputs: {
+            queryDSL: inputs.queryDSL,
+            queriesResult: inputs.queriesResult,
+          },
+          outputs: {
+            pipelineResult,
+          },
+        });
+
+        expect(evaluation.score).toBe(1);
+      }
+    );
+  });
 });

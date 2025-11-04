@@ -1,16 +1,12 @@
 import type { OntologyQueryDSL } from "@/ontology-query/dsl-schema";
-import { PrismaSchemaMappingDefinition, type PrismaFieldsMappingDefinition } from "./schema-mapping/schema-mapping-definition";
+import { PrismaSchemaMappingDefinition } from "./schema-mapping/schema-mapping-definition";
 import OntologyDefinition from "@/ontology/ontology-definition";
-import type {
-  ObjectInstance,
-  PropertyValue,
-} from "@/ontology/ontology-instance";
-import type { Property } from "@/ontology/metadata/ontology-type-schema";
+import type { ObjectInstance } from "@/ontology/ontology-instance";
 import type {
   PrismaListQueryResult,
-  PrismaModelInstance,
   PrismaQueryResult,
 } from "./prisma-query-executor";
+import PrismaSchemaMapper from "./schema-mapping/schema-mapper";
 
 export interface PipelineStepResult {
   stepName: string;
@@ -18,18 +14,17 @@ export interface PipelineStepResult {
   objectInstances: ObjectInstance[];
 }
 class PrismaQueryResultToOntologyTranslator {
-  translate(
+  private readonly prismaSchemaMapper = new PrismaSchemaMapper(
+    PrismaSchemaMappingDefinition,
+    OntologyDefinition
+  );
+
+  public translate(
     queryResults: PrismaQueryResult[],
     queryDSL: OntologyQueryDSL
   ): PipelineStepResult[] {
     return queryDSL.pipeline.map((step, index) => {
       const { query } = step;
-
-      const prismaModelMapping = PrismaSchemaMappingDefinition[query.objectType];
-      if (!prismaModelMapping) {
-        throw new Error(`No mapping found for objectType: ${query.objectType}`);
-      }
-
       const queryResult = queryResults[index];
 
       switch (query.type) {
@@ -41,7 +36,6 @@ class PrismaQueryResultToOntologyTranslator {
               queryResult,
               {
                 objectTypeId: query.objectType,
-                prismaFieldsMapping: prismaModelMapping.fields,
               }
             ),
           };
@@ -53,9 +47,11 @@ class PrismaQueryResultToOntologyTranslator {
 
   private translateListQueryResultToObjectInstances(
     queryResult: PrismaListQueryResult,
-    context: { objectTypeId: string; prismaFieldsMapping: PrismaFieldsMappingDefinition }
+    context: {
+      objectTypeId: string;
+    }
   ): ObjectInstance[] {
-    const { objectTypeId, prismaFieldsMapping } = context;
+    const { objectTypeId } = context;
 
     const objectInstances = queryResult.map((modelInstance) => {
       const objectType = OntologyDefinition.objectTypes.find(
@@ -74,14 +70,14 @@ class PrismaQueryResultToOntologyTranslator {
         );
       }
 
-      const primaryKeyField = this.getPrimaryKeyField({
-        primaryKeyProperty,
-        prismaFieldsMapping,
+      const primaryKeyField =
+        this.prismaSchemaMapper.mapToPrismaPrimaryKeyField(
+          objectTypeId,
+          modelInstance
+        );
+      const properties = this.prismaSchemaMapper.mapToOntologyProperties(
         modelInstance,
-      });
-      const properties = this.translateFieldsToProperties(
-        modelInstance,
-        prismaFieldsMapping
+        objectTypeId
       );
 
       return {
@@ -92,60 +88,6 @@ class PrismaQueryResultToOntologyTranslator {
     });
 
     return objectInstances;
-  }
-
-  private getPrimaryKeyField({
-    primaryKeyProperty,
-    prismaFieldsMapping,
-    modelInstance,
-  }: {
-    primaryKeyProperty: Property;
-    prismaFieldsMapping: PrismaFieldsMappingDefinition;
-    modelInstance: PrismaModelInstance;
-  }): { name: string; value: any } {
-    const prismaPrimaryKeyFieldName =
-      prismaFieldsMapping[primaryKeyProperty.id].name;
-    if (!prismaPrimaryKeyFieldName) {
-      throw new Error(
-        `No prismaPrimaryKeyFieldName found for propertyId: ${primaryKeyProperty.id}`
-      );
-    }
-
-    const prismaPrimaryKeyValue = modelInstance[prismaPrimaryKeyFieldName];
-    if (!prismaPrimaryKeyValue) {
-      throw new Error(
-        `No prismaPrimaryKeyValue found for propertyId: ${primaryKeyProperty.id}`
-      );
-    }
-
-    return {
-      name: prismaPrimaryKeyFieldName,
-      value: prismaPrimaryKeyValue,
-    };
-  }
-
-  private translateFieldsToProperties(
-    modelInstance: PrismaModelInstance,
-    prismaFieldsMapping: PrismaFieldsMappingDefinition
-  ): Record<string, PropertyValue> {
-    return Object.entries<{ [key: string]: any }>(modelInstance).reduce(
-      (result, [field, value]) => {
-        const fieldMapping = Object.entries(prismaFieldsMapping).find(
-          ([propertyId, fieldMapping]) => fieldMapping.name === field
-        );
-        if (!fieldMapping) {
-          throw new Error(`No fieldMapping found for field: ${field}`);
-        }
-
-        const propertyId = fieldMapping[0];
-        const propertyValue = value;
-
-        result[propertyId] = propertyValue;
-
-        return result;
-      },
-      {} as Record<string, PropertyValue>
-    );
   }
 }
 

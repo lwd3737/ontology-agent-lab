@@ -9,6 +9,7 @@ import {
 import type QueryCompiler from "../query-compiler";
 import { PrismaSchemaMappingDefinition } from "./schema-mapping/schema-mapping-definition";
 import PrismaSchemaMapper from "./schema-mapping/schema-mapper";
+import OntologyDefinition from "@/ontology/ontology-definition";
 
 export type PrismaQueryCompileResult = {
   type: "prisma";
@@ -39,7 +40,8 @@ interface OrderByClause {
 }
 export default class PrismaClientCompiler implements QueryCompiler {
   private readonly prismaSchemaMapper = new PrismaSchemaMapper(
-    PrismaSchemaMappingDefinition
+    PrismaSchemaMappingDefinition,
+    OntologyDefinition
   );
 
   public compileFromQueryDSL(
@@ -79,7 +81,7 @@ export default class PrismaClientCompiler implements QueryCompiler {
     }
 
     return {
-      model: this.prismaSchemaMapper.getPrismaModel(objectType),
+      model: this.prismaSchemaMapper.mapToPrismaModel(objectType),
       queryMethod: "findMany",
       args: queryArgs,
     };
@@ -90,7 +92,7 @@ export default class PrismaClientCompiler implements QueryCompiler {
     objectType: string
   ): SelectClause {
     return properties.reduce((result, propertyId) => {
-      const prismaField = this.prismaSchemaMapper.getPrismaField(
+      const prismaField = this.prismaSchemaMapper.mapToPrismaField(
         objectType,
         propertyId
       );
@@ -102,7 +104,7 @@ export default class PrismaClientCompiler implements QueryCompiler {
   }
 
   private buildWhereClause(filter: QueryFilterCondition, objectType: string) {
-    const prismaField = this.prismaSchemaMapper.getPrismaField(
+    const prismaField = this.prismaSchemaMapper.mapToPrismaField(
       objectType,
       filter.propertyId
     );
@@ -128,7 +130,7 @@ export default class PrismaClientCompiler implements QueryCompiler {
     objectType: string
   ): OrderByClause {
     return orderBy.fields.reduce((result, field) => {
-      const prismaField = this.prismaSchemaMapper.getPrismaField(
+      const prismaField = this.prismaSchemaMapper.mapToPrismaField(
         objectType,
         field.field
       );

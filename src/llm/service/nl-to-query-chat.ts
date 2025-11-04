@@ -14,6 +14,7 @@ import type QueryCompiler from "@/connector/query-compiler";
 import { executePrismaQueries } from "@/connector/prisma/prisma-query-executor";
 import PrismaQueryResultToOntologyTranslator from "@/connector/prisma/query-result-to-ontology-translator";
 import type { QueryCompileResult } from "@/connector/query-compiler";
+import { executeQueriesThenTranslateToOntology } from "@/connector/query-executor";
 
 const { generateObject } = wrapAISDK(ai);
 
@@ -55,24 +56,20 @@ export default class NLToQueryChatService {
     }
 
     // TODO: 인터페이스로 추상화
-
     switch (compiledQueries.type) {
       case "prisma":
-        const queryResults = await executePrismaQueries(
-          compiledQueries.pipeline
+        const pipelineResult = await executeQueriesThenTranslateToOntology(
+          "prisma",
+          compiledQueries.pipeline,
+          queryDSL
         );
-        const translator = new PrismaQueryResultToOntologyTranslator();
-        const pipelineResult = translator.translate(queryResults, queryDSL);
+
         break;
       default:
         throw new Error(
           `Unsupported query compiler type: ${compiledQueries.type}`
         );
     }
-    // const instances = await this.mapPrismaQueryResultToOntology(
-    //   queryDSL,
-    //   queryResult
-    // );
   }
 
   public async generateQueryDsl(

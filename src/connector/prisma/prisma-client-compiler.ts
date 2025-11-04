@@ -7,7 +7,8 @@ import {
 } from "@/ontology-query/dsl-schema";
 
 import type QueryCompiler from "../query-compiler";
-import { OntologyToPrismaMapping, type PrismaFieldsMapping } from "./mapping";
+import { PrismaSchemaMappingDefinition } from "./schema-mapping/schema-mapping-definition";
+import PrismaSchemaMapper from "./schema-mapping/schema-mapper";
 
 export type PrismaQueryCompileResult = {
   type: "prisma";
@@ -37,6 +38,10 @@ interface OrderByClause {
   [field: string]: "asc" | "desc";
 }
 export default class PrismaClientCompiler implements QueryCompiler {
+  private readonly prismaSchemaMapper = new PrismaSchemaMapper(
+    PrismaSchemaMappingDefinition
+  );
+
   public compileFromQueryDSL(
     queryDSL: OntologyQueryDSL
   ): PrismaQueryCompileResult {
@@ -61,34 +66,20 @@ export default class PrismaClientCompiler implements QueryCompiler {
     filter,
     orderBy,
   }: ListQuery): PrismaQuery {
-    const prismaModelMapping = OntologyToPrismaMapping[objectType];
-    if (!prismaModelMapping) {
-      throw new Error(`No prisma mapping found for object type: ${objectType}`);
-    }
-
     const queryArgs: PrismaListQueryArgs = {};
 
     if (properties) {
-      queryArgs.select = this.buildSelectClause(
-        properties,
-        prismaModelMapping.fields
-      );
+      queryArgs.select = this.buildSelectClause(properties, objectType);
     }
     if (filter) {
-      queryArgs.where = this.buildWhereClause(
-        filter,
-        prismaModelMapping.fields
-      );
+      queryArgs.where = this.buildWhereClause(filter, objectType);
     }
     if (orderBy) {
-      queryArgs.orderBy = this.buildOrderByClause(
-        orderBy,
-        prismaModelMapping.fields
-      );
+      queryArgs.orderBy = this.buildOrderByClause(orderBy, objectType);
     }
 
     return {
-      model: prismaModelMapping.model,
+      model: this.prismaSchemaMapper.getPrismaModel(objectType),
       queryMethod: "findMany",
       args: queryArgs,
     };
@@ -96,25 +87,25 @@ export default class PrismaClientCompiler implements QueryCompiler {
 
   private buildSelectClause(
     properties: string[],
-    fieldsMapping: PrismaFieldsMapping
+    objectType: string
   ): SelectClause {
-    return properties.reduce(
-      (result, propertyId) => ({
+    return properties.reduce((result, propertyId) => {
+      const prismaField = this.prismaSchemaMapper.getPrismaField(
+        objectType,
+        propertyId
+      );
+      return {
         ...result,
-        [fieldsMapping[propertyId].name]: true,
-      }),
-      {}
-    );
+        [prismaField.name]: true,
+      };
+    }, {});
   }
 
-  private buildWhereClause(
-    filter: QueryFilterCondition,
-    fieldsMapping: PrismaFieldsMapping
-  ) {
-    const prismaField = fieldsMapping[filter.propertyId];
-    if (!prismaField) {
-      throw new Error(`No prisma field found for field: ${filter.propertyId}`);
-    }
+  private buildWhereClause(filter: QueryFilterCondition, objectType: string) {
+    const prismaField = this.prismaSchemaMapper.getPrismaField(
+      objectType,
+      filter.propertyId
+    );
 
     switch (filter.type) {
       case "eq":
@@ -134,22 +125,17 @@ export default class PrismaClientCompiler implements QueryCompiler {
 
   private buildOrderByClause(
     orderBy: OrderBy,
-    fieldsMapping: PrismaFieldsMapping
+    objectType: string
   ): OrderByClause {
-    return orderBy.fields.reduce(
-      (result, field) => ({
+    return orderBy.fields.reduce((result, field) => {
+      const prismaField = this.prismaSchemaMapper.getPrismaField(
+        objectType,
+        field.field
+      );
+      return {
         ...result,
-        [fieldsMapping[field.field].name]: field.direction,
-      }),
-      {}
-    );
+        [prismaField.name]: field.direction,
+      };
+    }, {});
   }
-
-  // private getPropertyId(field: string): string {
-  //   const fieldChunks = field.split(".");
-  //   if (fieldChunks.length > 1 && fieldChunks[0] === "properties") {
-  //     return fieldChunks[1];
-  //   }
-  //   throw new Error(`No property id found for field: ${field}`);
-  // }
 }

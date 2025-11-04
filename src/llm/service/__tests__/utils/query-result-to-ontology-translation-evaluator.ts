@@ -2,7 +2,7 @@ import type { PipelineStepResult } from "@/connector/prisma/query-result-to-onto
 import type { OntologyQueryDSL } from "@/ontology-query/dsl-schema";
 import type { PrismaQueryResult } from "@/connector/prisma/prisma-query-executor";
 import { isEqual } from "lodash";
-import { OntologyToPrismaMapping } from "@/connector/prisma/mapping";
+import { PrismaSchemaMappingDefinition } from "@/connector/prisma/schema-mapping/schema-mapping-definition";
 
 const queryResultToOntologyTranslationEvaluator = ({
   inputs,
@@ -95,7 +95,7 @@ const queryResultToOntologyTranslationEvaluator = ({
             objectInstance.properties
           ).every(([propertyId, propertyValue]) => {
             const prismaFieldsMapping =
-              OntologyToPrismaMapping[objectInstance.objectType].fields;
+              PrismaSchemaMappingDefinition[objectInstance.objectType].fields;
             const prismaFieldName = prismaFieldsMapping[propertyId].name;
             const prismaFieldValue = modelInstance[prismaFieldName];
             return isEqual(propertyValue, prismaFieldValue);

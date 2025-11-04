@@ -12,6 +12,8 @@ export const prismaClientCompilerEvaluator = async ({
     score: output.every(
       (query, index) =>
         JSON.stringify(query) === JSON.stringify(expected[index])
-    ),
+    )
+      ? 1
+      : 0,
   };
 };

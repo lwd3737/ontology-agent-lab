@@ -6,6 +6,11 @@ import type {
   PropertyValue,
 } from "@/ontology/ontology-instance";
 import type { Property } from "@/ontology/metadata/ontology-type-schema";
+import type {
+  PrismaListQueryResult,
+  PrismaModelInstance,
+  PrismaQueryResult,
+} from "./prisma-query-executor";
 
 export interface PipelineStepResult {
   stepName: string;
@@ -14,16 +19,18 @@ export interface PipelineStepResult {
 }
 class PrismaQueryResultToOntologyTranslator {
   translate(
-    queryResult: any,
+    queryResults: PrismaQueryResult[],
     queryDSL: OntologyQueryDSL
   ): PipelineStepResult[] {
-    return queryDSL.pipeline.map((step) => {
+    return queryDSL.pipeline.map((step, index) => {
       const { query } = step;
 
       const prismaModelMapping = OntologyToPrismaMapping[query.objectType];
       if (!prismaModelMapping) {
         throw new Error(`No mapping found for objectType: ${query.objectType}`);
       }
+
+      const queryResult = queryResults[index];
 
       switch (query.type) {
         case "list":
@@ -45,7 +52,7 @@ class PrismaQueryResultToOntologyTranslator {
   }
 
   private translateListQueryResultToObjectInstances(
-    queryResult: any,
+    queryResult: PrismaListQueryResult,
     context: { objectTypeId: string; prismaFieldsMapping: PrismaFieldsMapping }
   ): ObjectInstance[] {
     const { objectTypeId, prismaFieldsMapping } = context;
@@ -72,19 +79,15 @@ class PrismaQueryResultToOntologyTranslator {
         prismaFieldsMapping,
         modelInstance,
       });
-      const properties = this.translateFieldsToProperties({
+      const properties = this.translateFieldsToProperties(
         modelInstance,
-        primaryKeyField,
-        prismaFieldsMapping,
-      });
+        prismaFieldsMapping
+      );
 
       return {
         rid: primaryKeyField.value,
         objectType: objectTypeId,
-        properties: {
-          [primaryKeyProperty.id]: primaryKeyField.value,
-          ...properties,
-        },
+        properties,
       };
     });
 
@@ -98,7 +101,7 @@ class PrismaQueryResultToOntologyTranslator {
   }: {
     primaryKeyProperty: Property;
     prismaFieldsMapping: PrismaFieldsMapping;
-    modelInstance: any;
+    modelInstance: PrismaModelInstance;
   }): { name: string; value: any } {
     const prismaPrimaryKeyFieldName =
       prismaFieldsMapping[primaryKeyProperty.id].name;
@@ -121,21 +124,12 @@ class PrismaQueryResultToOntologyTranslator {
     };
   }
 
-  private translateFieldsToProperties({
-    modelInstance,
-    primaryKeyField,
-    prismaFieldsMapping,
-  }: {
-    modelInstance: any;
-    primaryKeyField: { name: string; value: any };
-    prismaFieldsMapping: PrismaFieldsMapping;
-  }): Record<string, PropertyValue> {
+  private translateFieldsToProperties(
+    modelInstance: PrismaModelInstance,
+    prismaFieldsMapping: PrismaFieldsMapping
+  ): Record<string, PropertyValue> {
     return Object.entries<{ [key: string]: any }>(modelInstance).reduce(
       (result, [field, value]) => {
-        if (field === primaryKeyField.name) {
-          return result;
-        }
-
         const fieldMapping = Object.entries(prismaFieldsMapping).find(
           ([propertyId, fieldMapping]) => fieldMapping.name === field
         );

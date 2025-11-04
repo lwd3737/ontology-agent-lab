@@ -61,6 +61,8 @@ export default class NLToQueryChatService {
         const queryResults = await executePrismaQueries(
           compiledQueries.pipeline
         );
+        const translator = new PrismaQueryResultToOntologyTranslator();
+        const pipelineResult = translator.translate(queryResults, queryDSL);
         break;
       default:
         throw new Error(

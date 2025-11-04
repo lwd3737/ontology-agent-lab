@@ -1,16 +1,23 @@
 import type { ObjectType } from "@/ontology/metadata/ontology-type-schema";
 import type { PrismaModelInstance } from "../prisma-query-executor";
-import type {
-  PrismaFieldsMappingDefinition,
-  PrismaSchemaMappingDefinition,
-} from "./schema-mapping-definition";
+import { PrismaSchemaMappingDefinition } from "./schema-mapping-definition";
 import OntologyDefinition from "@/ontology/ontology-definition";
 import type { PropertyValue } from "@/ontology/ontology-instance";
 
-type PrismaFieldMapping = PrismaFieldsMappingDefinition[string];
+type PrismaField = {
+  name: string;
+  value: any;
+};
 
 type OntologyProperties = Record<string, PropertyValue>;
 export default class PrismaSchemaMapper {
+  public static create(): PrismaSchemaMapper {
+    return new PrismaSchemaMapper(
+      PrismaSchemaMappingDefinition,
+      OntologyDefinition
+    );
+  }
+
   constructor(
     private readonly schemaMappingDefinition: PrismaSchemaMappingDefinition,
     private readonly ontologyDefinition: OntologyDefinition
@@ -24,10 +31,7 @@ export default class PrismaSchemaMapper {
     return model;
   }
 
-  public mapToPrismaField(
-    objectType: string,
-    propertyId: string
-  ): PrismaFieldMapping {
+  public mapToPrismaFieldName(objectType: string, propertyId: string): string {
     const { fields } = this.schemaMappingDefinition[objectType];
     if (!fields) {
       throw new Error(`No fields found for object type: ${objectType}`);
@@ -36,7 +40,19 @@ export default class PrismaSchemaMapper {
     if (!field) {
       throw new Error(`No name found for property id: ${propertyId}`);
     }
-    return field;
+    return field.name;
+  }
+
+  public mapToPrismaField(
+    objectType: string,
+    propertyId: string,
+    modelInstance: PrismaModelInstance
+  ): PrismaField {
+    const fieldName = this.mapToPrismaFieldName(objectType, propertyId);
+    if (!fieldName) {
+      throw new Error(`No field name found for property id: ${propertyId}`);
+    }
+    return modelInstance[fieldName];
   }
 
   public mapToPrismaPrimaryKeyField(
@@ -54,20 +70,23 @@ export default class PrismaSchemaMapper {
       );
     }
 
-    const field = this.mapToPrismaField(objectTypeId, primaryKeyProperty.id);
-    if (!field) {
+    const fieldName = this.mapToPrismaFieldName(
+      objectTypeId,
+      primaryKeyProperty.id
+    );
+    if (!fieldName) {
       throw new Error(
         `No field found for property id: ${primaryKeyProperty.id}`
       );
     }
 
-    const value = modelInstance[field.name];
+    const value = modelInstance[fieldName];
     if (!value) {
-      throw new Error(`No value found for field: ${field.name}`);
+      throw new Error(`No value found for field: ${fieldName}`);
     }
 
     return {
-      name: field.name,
+      name: fieldName,
       value: value,
     };
   }

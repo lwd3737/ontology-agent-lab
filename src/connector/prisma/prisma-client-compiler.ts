@@ -7,9 +7,7 @@ import {
 } from "@/ontology-query/dsl-schema";
 
 import type QueryCompiler from "../query-compiler";
-import { PrismaSchemaMappingDefinition } from "./schema-mapping/schema-mapping-definition";
 import PrismaSchemaMapper from "./schema-mapping/schema-mapper";
-import OntologyDefinition from "@/ontology/ontology-definition";
 
 export type PrismaQueryCompileResult = {
   type: "prisma";
@@ -39,10 +37,7 @@ interface OrderByClause {
   [field: string]: "asc" | "desc";
 }
 export default class PrismaClientCompiler implements QueryCompiler {
-  private readonly prismaSchemaMapper = new PrismaSchemaMapper(
-    PrismaSchemaMappingDefinition,
-    OntologyDefinition
-  );
+  private readonly prismaSchemaMapper = PrismaSchemaMapper.create();
 
   public compileFromQueryDSL(
     queryDSL: OntologyQueryDSL
@@ -92,19 +87,19 @@ export default class PrismaClientCompiler implements QueryCompiler {
     objectType: string
   ): SelectClause {
     return properties.reduce((result, propertyId) => {
-      const prismaField = this.prismaSchemaMapper.mapToPrismaField(
+      const prismaFieldName = this.prismaSchemaMapper.mapToPrismaFieldName(
         objectType,
         propertyId
       );
       return {
         ...result,
-        [prismaField.name]: true,
+        [prismaFieldName]: true,
       };
     }, {});
   }
 
   private buildWhereClause(filter: QueryFilterCondition, objectType: string) {
-    const prismaField = this.prismaSchemaMapper.mapToPrismaField(
+    const prismaFieldName = this.prismaSchemaMapper.mapToPrismaFieldName(
       objectType,
       filter.propertyId
     );
@@ -116,7 +111,7 @@ export default class PrismaClientCompiler implements QueryCompiler {
       case "lt":
       case "lte":
         return {
-          [prismaField.name]: {
+          [prismaFieldName]: {
             [filter.type]: filter.value,
           },
         };
@@ -130,13 +125,13 @@ export default class PrismaClientCompiler implements QueryCompiler {
     objectType: string
   ): OrderByClause {
     return orderBy.fields.reduce((result, field) => {
-      const prismaField = this.prismaSchemaMapper.mapToPrismaField(
+      const prismaFieldName = this.prismaSchemaMapper.mapToPrismaFieldName(
         objectType,
         field.field
       );
       return {
         ...result,
-        [prismaField.name]: field.direction,
+        [prismaFieldName]: field.direction,
       };
     }, {});
   }

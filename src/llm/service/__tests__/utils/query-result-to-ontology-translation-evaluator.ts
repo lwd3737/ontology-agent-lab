@@ -3,6 +3,8 @@ import type { OntologyQueryDSL } from "@/ontology-query/dsl-schema";
 import type { PrismaQueryResult } from "@/connector/prisma/prisma-query-executor";
 import { isEqual } from "lodash";
 import { PrismaSchemaMappingDefinition } from "@/connector/prisma/schema-mapping/schema-mapping-definition";
+import OntologyDefinition from "@/ontology/ontology-definition";
+import PrismaSchemaMapper from "@/connector/prisma/schema-mapping/schema-mapper";
 
 const queryResultToOntologyTranslationEvaluator = ({
   inputs,
@@ -90,15 +92,18 @@ const queryResultToOntologyTranslationEvaluator = ({
             );
           }
 
+          const prismaSchemaMapper = PrismaSchemaMapper.create();
+
           const modelInstance = queriesResult[stepIndex][objectInstanceIndex];
           const isQueryValuesMatched = Object.entries(
             objectInstance.properties
           ).every(([propertyId, propertyValue]) => {
-            const prismaFieldsMapping =
-              PrismaSchemaMappingDefinition[objectInstance.objectType].fields;
-            const prismaFieldName = prismaFieldsMapping[propertyId].name;
-            const prismaFieldValue = modelInstance[prismaFieldName];
-            return isEqual(propertyValue, prismaFieldValue);
+            const prismaField = prismaSchemaMapper.mapToPrismaField(
+              objectInstance.objectType,
+              propertyId,
+              modelInstance
+            );
+            return isEqual(propertyValue, prismaField.value);
           });
           if (!isQueryValuesMatched) {
             result.instanceValueMismatchCount++;

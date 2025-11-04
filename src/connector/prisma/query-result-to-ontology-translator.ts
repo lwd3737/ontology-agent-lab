@@ -1,5 +1,4 @@
 import type { OntologyQueryDSL } from "@/ontology-query/dsl-schema";
-import { PrismaSchemaMappingDefinition } from "./schema-mapping/schema-mapping-definition";
 import OntologyDefinition from "@/ontology/ontology-definition";
 import type { ObjectInstance } from "@/ontology/ontology-instance";
 import type {
@@ -14,10 +13,7 @@ export interface PipelineStepResult {
   objectInstances: ObjectInstance[];
 }
 class PrismaQueryResultToOntologyTranslator {
-  private readonly prismaSchemaMapper = new PrismaSchemaMapper(
-    PrismaSchemaMappingDefinition,
-    OntologyDefinition
-  );
+  private readonly prismaSchemaMapper = PrismaSchemaMapper.create();
 
   public translate(
     queryResults: PrismaQueryResult[],

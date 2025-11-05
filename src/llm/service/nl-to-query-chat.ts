@@ -16,25 +16,10 @@ import PrismaQueryResultToOntologyTranslator, {
 import type { QueryCompileResult } from "@/connector/query-compiler";
 import { executeQueriesThenTranslateToOntology } from "@/connector/query-executor";
 import OntologyDefinitionContextBuilder from "../adapter/ontology-definition-context-builder";
-import OBJECT_INSTANCE_FORMAT_CONTEXT from "../prompt/object-instance-format-context";
 import { z } from "zod";
-import generateUserQueryResponseInstruction from "../prompt/usery-query-response";
 import UserQueryResponseService from "./user-query-response";
 
 const { generateObject } = wrapAISDK(ai);
-
-const UserQueryResponseSchema = z.object({
-  response: z
-    .string()
-    .describe(
-      "The response to the user's query in natural language. If the response is not possible to answer the user's query intent."
-    ),
-  success: z
-    .boolean()
-    .describe(
-      "Whether the response successfully answered the user's query intent (true for answered, false for not answered)."
-    ),
-});
 
 export default class NLToQueryChatService {
   private readonly queryDSLGenerationPrompt: string;

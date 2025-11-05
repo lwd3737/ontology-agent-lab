@@ -12,6 +12,8 @@ import PrismaQueryResultToOntologyTranslator from "@/connector/prisma/query-resu
 import type { PrismaListQueryResult } from "@/connector/prisma/prisma-query-executor";
 import queryResultToOntologyTranslationEvaluator from "./utils/query-result-to-ontology-translation-evaluator";
 import type { PipelineStepResult } from "@/connector/prisma/query-result-to-ontology-translator";
+import UserQueryResponseService from "../user-query-response";
+import userQueryResponseEvaluator from "./utils/user-query-response-evaluator";
 
 describe("NL to prisma query chat service", () => {
   describe("Query DSL 생성", () => {
@@ -410,7 +412,23 @@ describe("NL to prisma query chat service", () => {
             ],
           },
         },
-      ])("단순 응답 생성", async ({ inputs }) => {});
+      ])("단순 응답 생성", async ({ inputs }) => {
+        const response = await new UserQueryResponseService(
+          OntologyDefinition
+        ).generateResponse(inputs.userQuery, inputs.pipelineResult);
+
+        ls.logOutputs(response);
+
+        const evaluate = ls.wrapEvaluator(userQueryResponseEvaluator);
+        const evaluation = await evaluate({
+          outputs: response,
+        });
+
+        if (evaluation.score < 1) {
+          console.warn("응답 생성 평가 기준 미달");
+          console.log(JSON.stringify({ evaluation }, null, 2));
+        }
+      });
     }
   );
 });

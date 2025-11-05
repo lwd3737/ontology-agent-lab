@@ -13,7 +13,31 @@ const UserQueryResponseSchema = z.object({
   response: z
     .string()
     .describe(
-      "The response to the user's query in natural language. If the response is not possible to answer the user's query intent."
+      "The response to the user's query in natural language. When referencing an object instance in the response text, add {{object:[rid]}} at the end of the referenced part, where [rid] is the actual resource ID value. Example: '총 3명의 고객이 있습니다: 김민준{{object:clx1234567890}}, 이소연{{object:clx0987654321}}, 박지현{{object:clx1122334455}}'"
+    ),
+  references: z
+    .object({
+      objects: z
+        .record(
+          z.string().describe("Ontology object type id"),
+          z.array(
+            z.object({
+              rid: z.string().describe("The resource ID of the object."),
+              objectType: z
+                .string()
+                .describe("The ontology object type id of the object."),
+              properties: z
+                .record(z.string().describe("Ontology property id"), z.any())
+                .describe("The properties of the object."),
+            })
+          ).describe("Array of object instances of this type")
+        )
+        .optional()
+        .describe("The ontology objects referenced in the response. Each key is an object type ID, and the value is an array of object instances of that type."),
+    })
+    .optional()
+    .describe(
+      "All object instances that were referenced in the response. Contains 'objects' field (and optionally 'links' in the future). Grouped by object type (objectType as key). Include all instances that were mentioned or used to generate the response."
     ),
   success: z
     .boolean()
@@ -21,6 +45,8 @@ const UserQueryResponseSchema = z.object({
       "Whether the response successfully answered the user's query intent (true for answered, false for not answered)."
     ),
 });
+
+export type UserQueryResponseResult = z.infer<typeof UserQueryResponseSchema>;
 
 class UserQueryResponseService {
   private readonly ontologyDefinitionContextBuilder: OntologyDefinitionContextBuilder;

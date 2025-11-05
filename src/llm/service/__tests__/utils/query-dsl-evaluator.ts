@@ -1,4 +1,4 @@
-import OntologyDescriptionGenerator from "@/llm/adapter/ontology-description-generator";
+import OntologyDefinitionContextBuilder from "@/llm/adapter/ontology-description-generator";
 import {
   OntologyQueryDslSchema,
   type OntologyQueryDSL,
@@ -39,7 +39,7 @@ export const queryDSLEvaluator = async ({
   ].join("\n");
   const prompt = [
     "# Ontology Definition",
-    new OntologyDescriptionGenerator(OntologyDefinition).describe(),
+    new OntologyDefinitionContextBuilder(OntologyDefinition).build(),
     "",
     "# Query DSL Schema",
     queryDSLSchemaContext,

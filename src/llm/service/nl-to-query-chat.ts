@@ -1,5 +1,4 @@
 import OntologyDefinition from "@/ontology/ontology-definition";
-import OntologyDescriptionGenerator from "@/llm/adapter/ontology-description-generator";
 import { openai } from "@ai-sdk/openai";
 import { TextPart, type UIMessage } from "ai";
 import generateQueryDslPrompt from "../prompt/query-dsl-generation";
@@ -16,24 +15,48 @@ import PrismaQueryResultToOntologyTranslator, {
 } from "@/connector/prisma/query-result-to-ontology-translator";
 import type { QueryCompileResult } from "@/connector/query-compiler";
 import { executeQueriesThenTranslateToOntology } from "@/connector/query-executor";
+import OntologyDefinitionContextBuilder from "../adapter/ontology-definition-context-builder";
+import OBJECT_INSTANCE_FORMAT_CONTEXT from "../prompt/object-instance-format-context";
+import { z } from "zod";
+import generateUserQueryResponseInstruction from "../prompt/usery-query-response";
+import UserQueryResponseService from "./user-query-response";
 
 const { generateObject } = wrapAISDK(ai);
 
+const UserQueryResponseSchema = z.object({
+  response: z
+    .string()
+    .describe(
+      "The response to the user's query in natural language. If the response is not possible to answer the user's query intent."
+    ),
+  success: z
+    .boolean()
+    .describe(
+      "Whether the response successfully answered the user's query intent (true for answered, false for not answered)."
+    ),
+});
+
 export default class NLToQueryChatService {
   private readonly queryDSLGenerationPrompt: string;
-  private readonly ontologyDescriptionGenerator: OntologyDescriptionGenerator;
+  private readonly ontologyDefinitionContextBuilder: OntologyDefinitionContextBuilder;
   private readonly prismaQueryResultToOntologyTranslator =
     new PrismaQueryResultToOntologyTranslator();
+  private readonly userQueryResponseService: UserQueryResponseService;
 
   constructor(
     ontologyDefinition: OntologyDefinition,
     private readonly queryCompiler: QueryCompiler
   ) {
-    this.ontologyDescriptionGenerator = new OntologyDescriptionGenerator(
+    this.ontologyDefinitionContextBuilder =
+      new OntologyDefinitionContextBuilder(ontologyDefinition);
+    const ontologyDefinitionContext =
+      this.ontologyDefinitionContextBuilder.build();
+    this.queryDSLGenerationPrompt = generateQueryDslPrompt(
+      ontologyDefinitionContext
+    );
+    this.userQueryResponseService = new UserQueryResponseService(
       ontologyDefinition
     );
-    const ontologyDescription = this.ontologyDescriptionGenerator.describe();
-    this.queryDSLGenerationPrompt = generateQueryDslPrompt(ontologyDescription);
 
     this.generateQueryDsl = traceable(this.generateQueryDsl.bind(this), {
       name: "generateQueryDSL",
@@ -45,6 +68,18 @@ export default class NLToQueryChatService {
       this.translatePrismaQueryResultToOntology.bind(this),
       {
         name: "translatePrismaQueryResultToOntology",
+      }
+    );
+    this.executeQueriesThenTranslateToOntology = traceable(
+      this.executeQueriesThenTranslateToOntology.bind(this),
+      {
+        name: "executeQueriesThenTranslateToOntology",
+      }
+    );
+    this.generateUserQueryResponse = traceable(
+      this.generateUserQueryResponse.bind(this),
+      {
+        name: "generateUserQueryResponse",
       }
     );
   }
@@ -65,17 +100,23 @@ export default class NLToQueryChatService {
       compiledQueries,
       queryDSL
     );
+    const userQueryResponse = await this.generateUserQueryResponse(
+      userQuery,
+      pipelineResult
+    );
+
+    return userQueryResponse;
   }
 
   public async generateQueryDsl(
-    userIntent: string
+    userQueryIntent: string
     // messages: UIMessage[]
   ): Promise<OntologyQueryDSL> {
     const result = await generateObject({
       model: openai("gpt-5-mini"),
       system: this.queryDSLGenerationPrompt,
       // messages: convertToModelMessages(messages),
-      prompt: userIntent,
+      prompt: userQueryIntent,
       schemaName: "QueryDsl",
       schema: OntologyQueryDslSchema,
       schemaDescription:
@@ -125,5 +166,15 @@ export default class NLToQueryChatService {
           `Unsupported query compiler type: ${compileResult.type}`
         );
     }
+  }
+
+  private async generateUserQueryResponse(
+    userQueryIntent: string,
+    pipelineResult: PipelineStepResult[]
+  ) {
+    return this.userQueryResponseService.generateResponse(
+      userQueryIntent,
+      pipelineResult
+    );
   }
 }

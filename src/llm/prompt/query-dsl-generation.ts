@@ -1,4 +1,4 @@
-const generateQueryDslPrompt = (ontologyContext: string) => {
+const generateQueryDslPrompt = (ontologyDefinitionContext: string) => {
   return [
     "Role: Translate the user's natural-language request into a QueryDSL object for ORM/DB querying using the provided ontology.",
     "",
@@ -12,7 +12,7 @@ const generateQueryDslPrompt = (ontologyContext: string) => {
     "- Each pipeline step's 'name' must be a concise, descriptive identifier of the step's purpose.",
     "- Use lower_snake_case",
     "",
-    ontologyContext,
+    ontologyDefinitionContext,
   ].join("\n");
 };
 

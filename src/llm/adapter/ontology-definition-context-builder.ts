@@ -1,14 +1,14 @@
 import type OntologyDefinition from "@/ontology/ontology-definition";
 
-export default class OntologyDescriptionGenerator {
+export default class OntologyDefinitionContextBuilder {
   constructor(private readonly ontology: OntologyDefinition) {}
 
-  public describe(filter?: {
+  public build(filter?: {
     objectTypeIds?: string[];
     linkTypeIds?: string[];
   }): string {
-    const objectTypes = this.describeObjectTypes(filter?.objectTypeIds);
-    const linkTypes = this.describeLinkTypes(filter?.linkTypeIds);
+    const objectTypes = this.buildObjectTypesContext(filter?.objectTypeIds);
+    const linkTypes = this.buildLinkTypesContext(filter?.linkTypeIds);
 
     return [
       "# Ontology Definition",
@@ -21,7 +21,7 @@ export default class OntologyDescriptionGenerator {
     ].join("\n");
   }
 
-  private describeObjectTypes(objectTypeIds?: string[]): string {
+  private buildObjectTypesContext(objectTypeIds?: string[]): string {
     const targetObjectTypes = objectTypeIds
       ? this.ontology.objectTypes.filter((objectType) =>
           objectTypeIds.some((objectTypeId) => objectTypeId === objectType.id)
@@ -60,7 +60,7 @@ export default class OntologyDescriptionGenerator {
     return blocks.join("\n");
   }
 
-  private describeLinkTypes(linkTypeIds?: string[]): string {
+  private buildLinkTypesContext(linkTypeIds?: string[]): string {
     const targetLinkTypes = linkTypeIds
       ? this.ontology.linkTypes.filter((linkType) =>
           linkTypeIds.some((linkTypeId) => linkTypeId === linkType.id)

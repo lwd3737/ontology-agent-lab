@@ -1,8 +1,8 @@
 import OntologyDefinition from "@/ontology/ontology-definition";
-import OntologyToPromptTranslator from "@/llm/adapter/ontology-to-prompt-translator";
+import OntologyDescriptionGenerator from "@/llm/adapter/ontology-description-generator";
 import { openai } from "@ai-sdk/openai";
-import { convertToModelMessages, type UIMessage } from "ai";
-import generateQueryDslPrompt from "../prompt/query-dsl-generator";
+import { TextPart, type UIMessage } from "ai";
+import generateQueryDslPrompt from "../prompt/query-dsl-generation";
 import {
   OntologyQueryDslSchema,
   type OntologyQueryDSL,
@@ -11,26 +11,29 @@ import * as ai from "ai";
 import { wrapAISDK } from "langsmith/experimental/vercel";
 import { traceable } from "langsmith/traceable";
 import type QueryCompiler from "@/connector/query-compiler";
-import { executePrismaQueries } from "@/connector/prisma/prisma-query-executor";
-import PrismaQueryResultToOntologyTranslator from "@/connector/prisma/query-result-to-ontology-translator";
+import PrismaQueryResultToOntologyTranslator, {
+  type PipelineStepResult,
+} from "@/connector/prisma/query-result-to-ontology-translator";
 import type { QueryCompileResult } from "@/connector/query-compiler";
 import { executeQueriesThenTranslateToOntology } from "@/connector/query-executor";
 
 const { generateObject } = wrapAISDK(ai);
 
 export default class NLToQueryChatService {
-  private readonly queryDSLGeneratorPrompt: string;
-  private readonly ontologyToPromptTranslator: OntologyToPromptTranslator;
+  private readonly queryDSLGenerationPrompt: string;
+  private readonly ontologyDescriptionGenerator: OntologyDescriptionGenerator;
   private readonly prismaQueryResultToOntologyTranslator =
     new PrismaQueryResultToOntologyTranslator();
 
   constructor(
-    private readonly ontology: OntologyDefinition,
+    ontologyDefinition: OntologyDefinition,
     private readonly queryCompiler: QueryCompiler
   ) {
-    this.ontologyToPromptTranslator = new OntologyToPromptTranslator(ontology);
-    const ontologyContext = this.ontologyToPromptTranslator.execute();
-    this.queryDSLGeneratorPrompt = generateQueryDslPrompt(ontologyContext);
+    this.ontologyDescriptionGenerator = new OntologyDescriptionGenerator(
+      ontologyDefinition
+    );
+    const ontologyDescription = this.ontologyDescriptionGenerator.describe();
+    this.queryDSLGenerationPrompt = generateQueryDslPrompt(ontologyDescription);
 
     this.generateQueryDsl = traceable(this.generateQueryDsl.bind(this), {
       name: "generateQueryDSL",
@@ -47,38 +50,32 @@ export default class NLToQueryChatService {
   }
 
   public async ask(messages: UIMessage[]) {
-    const queryDSL = await this.generateQueryDsl(messages);
+    const message = messages[messages.length - 1].parts[0];
+    // TODO: LLM으로 사용자 의도 추출
+    const userQuery = (message as TextPart).text;
+
+    const queryDSL = await this.generateQueryDsl(userQuery);
     const compiledQueries = await this.compileQueryDSL(queryDSL);
 
-    // 첫 번째 쿼리만 실행 (나중에 여러 쿼리 지원 확장 가능)
     if (compiledQueries.pipeline.length === 0) {
       throw new Error("No compiled queries found");
     }
 
-    // TODO: 인터페이스로 추상화
-    switch (compiledQueries.type) {
-      case "prisma":
-        const pipelineResult = await executeQueriesThenTranslateToOntology(
-          "prisma",
-          compiledQueries.pipeline,
-          queryDSL
-        );
-
-        break;
-      default:
-        throw new Error(
-          `Unsupported query compiler type: ${compiledQueries.type}`
-        );
-    }
+    const pipelineResult = await this.executeQueriesThenTranslateToOntology(
+      compiledQueries,
+      queryDSL
+    );
   }
 
   public async generateQueryDsl(
-    messages: UIMessage[]
+    userIntent: string
+    // messages: UIMessage[]
   ): Promise<OntologyQueryDSL> {
     const result = await generateObject({
       model: openai("gpt-5-mini"),
-      system: this.queryDSLGeneratorPrompt,
-      messages: convertToModelMessages(messages),
+      system: this.queryDSLGenerationPrompt,
+      // messages: convertToModelMessages(messages),
+      prompt: userIntent,
       schemaName: "QueryDsl",
       schema: OntologyQueryDslSchema,
       schemaDescription:
@@ -110,5 +107,23 @@ export default class NLToQueryChatService {
       queryResult,
       queryDSL
     );
+  }
+
+  private async executeQueriesThenTranslateToOntology(
+    compileResult: QueryCompileResult,
+    queryDSL: OntologyQueryDSL
+  ): Promise<PipelineStepResult[]> {
+    switch (compileResult.type) {
+      case "prisma":
+        return executeQueriesThenTranslateToOntology(
+          "prisma",
+          compileResult.pipeline,
+          queryDSL
+        );
+      default:
+        throw new Error(
+          `Unsupported query compiler type: ${compileResult.type}`
+        );
+    }
   }
 }

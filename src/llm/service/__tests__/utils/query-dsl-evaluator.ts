@@ -1,4 +1,4 @@
-import OntologyToPromptTranslator from "@/llm/adapter/ontology-to-prompt-translator";
+import OntologyDescriptionGenerator from "@/llm/adapter/ontology-description-generator";
 import {
   OntologyQueryDslSchema,
   type OntologyQueryDSL,
@@ -39,7 +39,7 @@ export const queryDSLEvaluator = async ({
   ].join("\n");
   const prompt = [
     "# Ontology Definition",
-    new OntologyToPromptTranslator(OntologyDefinition).execute(),
+    new OntologyDescriptionGenerator(OntologyDefinition).describe(),
     "",
     "# Query DSL Schema",
     queryDSLSchemaContext,

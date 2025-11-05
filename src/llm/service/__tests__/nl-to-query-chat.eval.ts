@@ -1,7 +1,7 @@
 import OntologyDefinition from "@/ontology/ontology-definition";
 import * as ls from "langsmith/vitest";
 import NLToQueryChatService from "../nl-to-query-chat";
-import { describe, expect } from "vitest";
+import { describe } from "vitest";
 import PrismaClientCompiler, {
   type PrismaQueryCompileResult,
 } from "@/connector/prisma/prisma-client-compiler";
@@ -11,6 +11,7 @@ import { prismaClientCompilerEvaluator } from "./utils/prisma-client-compiler-ev
 import PrismaQueryResultToOntologyTranslator from "@/connector/prisma/query-result-to-ontology-translator";
 import type { PrismaListQueryResult } from "@/connector/prisma/prisma-query-executor";
 import queryResultToOntologyTranslationEvaluator from "./utils/query-result-to-ontology-translation-evaluator";
+import type { PipelineStepResult } from "@/connector/prisma/query-result-to-ontology-translator";
 
 describe("NL to prisma query chat service", () => {
   describe("Query DSL 생성", () => {
@@ -75,13 +76,7 @@ describe("NL to prisma query chat service", () => {
             OntologyDefinition,
             new PrismaClientCompiler()
           );
-          const queryDSL = await service.generateQueryDsl([
-            {
-              id: "1",
-              role: "user",
-              parts: [{ type: "text", text: inputs.userQuery }],
-            },
-          ]);
+          const queryDSL = await service.generateQueryDsl(inputs.userQuery);
           ls.logOutputs({ queryDSL });
 
           const evaluate = ls.wrapEvaluator(queryDSLEvaluator);
@@ -298,4 +293,124 @@ describe("NL to prisma query chat service", () => {
       }
     );
   });
+
+  ls.describe(
+    "파이프라인 결과(온톨로지 인스턴스)와 사용자 질의를 기반으로 응답 생성",
+    () => {
+      ls.test.each<
+        {
+          userQuery: string;
+          pipelineResult: PipelineStepResult[];
+        },
+        never
+      >([
+        {
+          inputs: {
+            userQuery: "모든 고객을 조회해줘",
+            pipelineResult: [
+              {
+                stepName: "list_all_customers",
+                objectType: "customer",
+                objectInstances: [
+                  {
+                    rid: "clx1234567890",
+                    objectType: "customer",
+                    properties: {
+                      id: "clx1234567890",
+                      name: "김민준",
+                      phone: "010-1234-5678",
+                    },
+                  },
+                  {
+                    rid: "clx0987654321",
+                    objectType: "customer",
+                    properties: {
+                      id: "clx0987654321",
+                      name: "이소연",
+                      phone: "010-2345-6789",
+                    },
+                  },
+                  {
+                    rid: "clx1122334455",
+                    objectType: "customer",
+                    properties: {
+                      id: "clx1122334455",
+                      name: "박지현",
+                      phone: "010-3456-7890",
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        },
+        {
+          inputs: {
+            userQuery: "모든 카테고리를 가져와줘",
+            pipelineResult: [
+              {
+                stepName: "list_categories",
+                objectType: "category",
+                objectInstances: [
+                  {
+                    rid: "clxcat001",
+                    objectType: "category",
+                    properties: {
+                      id: "clxcat001",
+                      name: "전자제품",
+                    },
+                  },
+                  {
+                    rid: "clxcat002",
+                    objectType: "category",
+                    properties: {
+                      id: "clxcat002",
+                      name: "가전제품",
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        },
+        {
+          inputs: {
+            userQuery: "제품 목록을 보여줘",
+            pipelineResult: [
+              {
+                stepName: "list_products",
+                objectType: "product",
+                objectInstances: [
+                  {
+                    rid: "clxprod001",
+                    objectType: "product",
+                    properties: {
+                      id: "clxprod001",
+                      name: "스마트폰",
+                      description: "최신 스마트폰",
+                      price: 800000,
+                      stock: 50,
+                      categoryId: "clxcat001",
+                    },
+                  },
+                  {
+                    rid: "clxprod002",
+                    objectType: "product",
+                    properties: {
+                      id: "clxprod002",
+                      name: "노트북",
+                      description: "고성능 노트북",
+                      price: 1200000,
+                      stock: 30,
+                      categoryId: "clxcat001",
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      ])("단순 응답 생성", async ({ inputs }) => {});
+    }
+  );
 });

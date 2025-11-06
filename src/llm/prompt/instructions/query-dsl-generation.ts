@@ -2,7 +2,9 @@ import PromptBuilder from "../helpers/prompt-builder";
 
 const builder = new PromptBuilder();
 
-const generateQueryDslPrompt = (ontologyDefinitionContext: string) =>
+const buildQueryDslGenerationInstruction = (
+  ontologyDefinitionContext: string
+) =>
   builder
     .section("Role")
     .text(
@@ -26,4 +28,4 @@ const generateQueryDslPrompt = (ontologyDefinitionContext: string) =>
     .text(ontologyDefinitionContext)
     .build();
 
-export default generateQueryDslPrompt;
+export default buildQueryDslGenerationInstruction;

@@ -1,11 +1,6 @@
 import OntologyDefinition from "@/ontology/ontology-definition";
-import { openai } from "@ai-sdk/openai";
 import { TextPart, type UIMessage } from "ai";
-import generateQueryDslPrompt from "../prompt/instructions/query-dsl-generation";
-import {
-  OntologyQueryDslSchema,
-  type OntologyQueryDSL,
-} from "@/ontology-query/dsl-schema";
+import { type OntologyQueryDSL } from "@/ontology-query/dsl-schema";
 import * as ai from "ai";
 import { wrapAISDK } from "langsmith/experimental/vercel";
 import { traceable } from "langsmith/traceable";
@@ -15,29 +10,22 @@ import PrismaQueryResultToOntologyTranslator, {
 } from "@/connector/prisma/query-result-to-ontology-translator";
 import type { QueryCompileResult } from "@/connector/query-compiler";
 import { executeQueriesThenTranslateToOntology } from "@/connector/query-executor";
-import OntologyDefinitionContextBuilder from "../prompt/contexts/ontology-definition-context-builder";
 import UserQueryResponseService from "./user-query-response";
+import QueryDSLGenerator from "./query-dsl-generator";
 
 const { generateObject } = wrapAISDK(ai);
 
 export default class ChatAgentService {
-  private readonly queryDSLGenerationPrompt: string;
-  private readonly ontologyDefinitionContextBuilder: OntologyDefinitionContextBuilder;
   private readonly prismaQueryResultToOntologyTranslator =
     new PrismaQueryResultToOntologyTranslator();
   private readonly userQueryResponseService: UserQueryResponseService;
+  private readonly queryDSLGenerator: QueryDSLGenerator;
 
   constructor(
     ontologyDefinition: OntologyDefinition,
     private readonly queryCompiler: QueryCompiler
   ) {
-    this.ontologyDefinitionContextBuilder =
-      new OntologyDefinitionContextBuilder(ontologyDefinition);
-    const ontologyDefinitionContext =
-      this.ontologyDefinitionContextBuilder.build();
-    this.queryDSLGenerationPrompt = generateQueryDslPrompt(
-      ontologyDefinitionContext
-    );
+    this.queryDSLGenerator = new QueryDSLGenerator(ontologyDefinition);
     this.userQueryResponseService = new UserQueryResponseService(
       ontologyDefinition
     );
@@ -96,26 +84,7 @@ export default class ChatAgentService {
     userQueryIntent: string
     // messages: UIMessage[]
   ): Promise<OntologyQueryDSL> {
-    const result = await generateObject({
-      model: openai("gpt-5-mini"),
-      system: this.queryDSLGenerationPrompt,
-      // messages: convertToModelMessages(messages),
-      prompt: userQueryIntent,
-      schemaName: "QueryDsl",
-      schema: OntologyQueryDslSchema,
-      schemaDescription:
-        "QueryDSL is a JSON object that represents a query to the database.",
-      maxRetries: 3,
-      providerOptions: {
-        openai: {
-          reasoning: {
-            effort: "low",
-          },
-        },
-      },
-    });
-
-    return result.object;
+    return this.queryDSLGenerator.execute(userQueryIntent);
   }
 
   private async compileQueryDSL(

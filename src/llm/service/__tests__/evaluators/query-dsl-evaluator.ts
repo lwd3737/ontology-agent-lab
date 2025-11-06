@@ -1,4 +1,5 @@
 import OntologyDefinitionContextBuilder from "@/llm/prompt/contexts/ontology-definition-context-builder";
+import PromptBuilder from "@/llm/prompt/helpers/prompt-builder";
 import {
   OntologyQueryDslSchema,
   type OntologyQueryDSL,
@@ -24,37 +25,41 @@ export const queryDSLEvaluator = async ({
     2
   );
 
-  const instruction = [
-    "You are a strict judge for Natural Language to Query DSL based on the ontology.",
-    "",
-    "# Scoring rubric (0~1 each):",
-    "- intent: Does DSL target the correct object(s) for the user intent?",
-    "- ontologyGroundingAccuracy: Do objectType/property/linkType exist and match ontology semantics?",
-    "- queryConstraintSatisfaction: Does the DSL correctly capture the user's constraints?",
-    "- queryStructure: Is the DSL structurally minimal and appropriate?",
-    "Overall pass = score >= 0.8 AND no critical ontology errors.",
-    "",
-    "# Evaluation",
-    "- ",
-  ].join("\n");
-  const prompt = [
-    "# Ontology Definition",
-    new OntologyDefinitionContextBuilder(OntologyDefinition).build(),
-    "",
-    "# Query DSL Schema",
-    queryDSLSchemaContext,
-    "",
-    "# User Query",
-    `${userQuery}.`,
-    "",
-    "# Generated Query DSL",
-    `${JSON.stringify(outputs)}.`,
-  ].join("\n");
+  const promptBuilder = new PromptBuilder();
+  const instruction = promptBuilder
+    .section("Role")
+    .text(
+      "You are a strict judge for Natural Language to Query DSL based on the ontology."
+    )
+    .newLine()
+    .section("Scoring rubric (0~1 each)")
+    .bullet([
+      "intent: Does DSL target the correct object(s) for the user intent?",
+      "ontologyGroundingAccuracy: Do objectType/property/linkType exist and match ontology semantics?",
+      "queryConstraintSatisfaction: Does the DSL correctly capture the user's constraints?",
+      "queryStructure: Is the DSL structurally minimal and appropriate?",
+      "Overall pass = score >= 0.8 AND no critical ontology errors.",
+    ])
+    .build();
+
+  const input = promptBuilder
+    .section("Ontology Definition")
+    .text(new OntologyDefinitionContextBuilder(OntologyDefinition).build())
+    .newLine()
+    .section("Query DSL Schema")
+    .text(queryDSLSchemaContext)
+    .newLine()
+    .section("User Query")
+    .text(`${userQuery}.`)
+    .newLine()
+    .section("Generated Query DSL")
+    .json(outputs)
+    .build();
 
   const result = await generateObject({
     model: openai("gpt-5"),
     system: instruction,
-    prompt,
+    prompt: input,
     schema: z.object({
       score: z.number().describe("The final score of the query DSL."),
       details: z.object({

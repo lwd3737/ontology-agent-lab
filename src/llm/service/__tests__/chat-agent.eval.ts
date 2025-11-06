@@ -5,7 +5,6 @@ import { describe } from "vitest";
 import PrismaClientCompiler, {
   type PrismaQueryCompileResult,
 } from "@/connector/prisma/prisma-client-compiler";
-import { queryDSLEvaluator } from "./evaluators/query-dsl-evaluator";
 import type { OntologyQueryDSL } from "@/ontology-query/dsl-schema";
 import { prismaClientCompilerEvaluator } from "./evaluators/prisma-client-compiler-evaluator";
 import PrismaQueryResultToOntologyTranslator from "@/connector/prisma/query-result-to-ontology-translator";
@@ -14,41 +13,8 @@ import queryResultToOntologyTranslationEvaluator from "./evaluators/query-result
 import type { PipelineStepResult } from "@/connector/prisma/query-result-to-ontology-translator";
 import UserQueryResponseService from "../user-query-response";
 import userQueryResponseEvaluator from "./evaluators/user-query-response-evaluator";
-import { formatInputs } from "./dataset/helpers";
-import UserQueryInputs from "./dataset/inputs/user-query";
 
 describe("Chat agent service", () => {
-  describe("Query DSL 생성", () => {
-    describe("list queries", () => {
-      ls.describe("단순 조회 질의", () => {
-        ls.test.each(formatInputs("userQuery", UserQueryInputs.simpleLookup))(
-          "단순 QueryDSL 생성 성공",
-
-          async ({ inputs }) => {
-            const service = new ChatAgentService(
-              OntologyDefinition,
-              new PrismaClientCompiler()
-            );
-            const queryDSL = await service.generateQueryDsl(inputs.userQuery);
-            ls.logOutputs({ queryDSL });
-
-            const evaluate = ls.wrapEvaluator(queryDSLEvaluator);
-            const evaluation = await evaluate({
-              userQuery: inputs.userQuery,
-              outputs: queryDSL,
-            });
-
-            if (evaluation.score < 0.8) {
-              console.warn("Query DSL 생성 평가 기준 미달");
-              console.log(JSON.stringify({ evaluation }, null, 2));
-            }
-          },
-          1000000
-        );
-      });
-    });
-  });
-
   ls.describe("Query DSL -> Prisma Query 컴파일", () => {
     ls.test.each<
       { queryDSL: OntologyQueryDSL },

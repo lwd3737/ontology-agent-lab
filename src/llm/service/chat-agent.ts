@@ -16,12 +16,11 @@ import PrismaQueryResultToOntologyTranslator, {
 import type { QueryCompileResult } from "@/connector/query-compiler";
 import { executeQueriesThenTranslateToOntology } from "@/connector/query-executor";
 import OntologyDefinitionContextBuilder from "../adapter/ontology-definition-context-builder";
-import { z } from "zod";
 import UserQueryResponseService from "./user-query-response";
 
 const { generateObject } = wrapAISDK(ai);
 
-export default class NLToQueryChatService {
+export default class ChatAgentService {
   private readonly queryDSLGenerationPrompt: string;
   private readonly ontologyDefinitionContextBuilder: OntologyDefinitionContextBuilder;
   private readonly prismaQueryResultToOntologyTranslator =

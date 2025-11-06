@@ -1,99 +1,51 @@
 import OntologyDefinition from "@/ontology/ontology-definition";
 import * as ls from "langsmith/vitest";
-import NLToQueryChatService from "../nl-to-query-chat";
+import ChatAgentService from "../chat-agent";
 import { describe } from "vitest";
 import PrismaClientCompiler, {
   type PrismaQueryCompileResult,
 } from "@/connector/prisma/prisma-client-compiler";
-import { queryDSLEvaluator } from "./utils/query-dsl-evaluator";
+import { queryDSLEvaluator } from "./evaluators/query-dsl-evaluator";
 import type { OntologyQueryDSL } from "@/ontology-query/dsl-schema";
-import { prismaClientCompilerEvaluator } from "./utils/prisma-client-compiler-evaluator";
+import { prismaClientCompilerEvaluator } from "./evaluators/prisma-client-compiler-evaluator";
 import PrismaQueryResultToOntologyTranslator from "@/connector/prisma/query-result-to-ontology-translator";
 import type { PrismaListQueryResult } from "@/connector/prisma/prisma-query-executor";
-import queryResultToOntologyTranslationEvaluator from "./utils/query-result-to-ontology-translation-evaluator";
+import queryResultToOntologyTranslationEvaluator from "./evaluators/query-result-to-ontology-translation-evaluator";
 import type { PipelineStepResult } from "@/connector/prisma/query-result-to-ontology-translator";
 import UserQueryResponseService from "../user-query-response";
-import userQueryResponseEvaluator from "./utils/user-query-response-evaluator";
+import userQueryResponseEvaluator from "./evaluators/user-query-response-evaluator";
+import { formatInputs } from "./dataset/helpers";
+import UserQueryInputs from "./dataset/inputs/user-query";
 
-describe("NL to prisma query chat service", () => {
+describe("Chat agent service", () => {
   describe("Query DSL 생성", () => {
-    ls.describe("list Query DSL 생성", () => {
-      ls.test.each([
-        {
-          inputs: {
-            userQuery: "모든 고객을 조회해줘",
+    describe("list queries", () => {
+      ls.describe("단순 조회 질의", () => {
+        ls.test.each(formatInputs("userQuery", UserQueryInputs.simpleLookup))(
+          "단순 QueryDSL 생성 성공",
+
+          async ({ inputs }) => {
+            const service = new ChatAgentService(
+              OntologyDefinition,
+              new PrismaClientCompiler()
+            );
+            const queryDSL = await service.generateQueryDsl(inputs.userQuery);
+            ls.logOutputs({ queryDSL });
+
+            const evaluate = ls.wrapEvaluator(queryDSLEvaluator);
+            const evaluation = await evaluate({
+              userQuery: inputs.userQuery,
+              outputs: queryDSL,
+            });
+
+            if (evaluation.score < 0.8) {
+              console.warn("Query DSL 생성 평가 기준 미달");
+              console.log(JSON.stringify({ evaluation }, null, 2));
+            }
           },
-        },
-        {
-          inputs: {
-            userQuery: "모든 카테고리를 가져와줘",
-          },
-        },
-        // {
-        //   inputs: {
-        //     userQuery: "이름에 'John'이 포함된 고객을 찾아줘",
-        //   },
-        // },
-        // {
-        //   inputs: {
-        //     userQuery: "가격이 100보다 큰 모든 제품을 가져와줘",
-        //   },
-        // },
-        // {
-        //   inputs: {
-        //     userQuery: "2024년 1월 1일 이후에 생성된 주문을 찾아줘",
-        //   },
-        // },
-        // {
-        //   inputs: {
-        //     userQuery: "재고가 10 이하인 제품들을 가져와줘",
-        //   },
-        // },
-        // {
-        //   inputs: {
-        //     userQuery: "전화번호가 '123-456-7890'인 고객을 찾아줘",
-        //   },
-        // },
-
-        // {
-        //   inputs: {
-        //     userQuery: "상태가 'shipped'인 배송을 찾아줘",
-        //   },
-        // },
-        // {
-        //   inputs: {
-        //     userQuery: "가격이 50 이상이고 재고가 5 이상인 제품을 찾아줘",
-        //   },
-        // },
-        // {
-        //   inputs: {
-        //     userQuery: "총 금액이 1000보다 큰 주문을 찾아줘",
-        //   },
-        // },
-      ])(
-        "단순 QueryDSL 생성 성공",
-
-        async ({ inputs }) => {
-          const service = new NLToQueryChatService(
-            OntologyDefinition,
-            new PrismaClientCompiler()
-          );
-          const queryDSL = await service.generateQueryDsl(inputs.userQuery);
-          ls.logOutputs({ queryDSL });
-
-          const evaluate = ls.wrapEvaluator(queryDSLEvaluator);
-          const evaluation = await evaluate({
-            userQuery: inputs.userQuery,
-            outputs: queryDSL,
-          });
-
-          if (evaluation.score < 0.8) {
-            console.warn("Query DSL 생성 평가 기준 미달");
-            console.log(JSON.stringify({ evaluation }, null, 2));
-          }
-        },
-        1000000
-      );
+          1000000
+        );
+      });
     });
   });
 
@@ -198,7 +150,6 @@ describe("NL to prisma query chat service", () => {
     ls.test.each<
       { queriesResult: PrismaListQueryResult[]; queryDSL: OntologyQueryDSL },
       never
-      // { ontologyInstances: ObjectInstance[] }
     >([
       {
         inputs: {
@@ -429,6 +380,18 @@ describe("NL to prisma query chat service", () => {
           console.log(JSON.stringify({ evaluation }, null, 2));
         }
       });
+    }
+  );
+
+  ls.describe(
+    "자연어 질의 -> 온톨로지 질의 -> 파이프라인 실행 -> 응답 생성",
+    () => {
+      const service = new ChatAgentService(
+        OntologyDefinition,
+        new PrismaClientCompiler()
+      );
+
+      ls.test.each([])("단순 조회 질의 응답 생성", async ({ inputs }) => {});
     }
   );
 });

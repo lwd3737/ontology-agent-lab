@@ -16,6 +16,7 @@
     "@ai-sdk/openai": "^2.0.52",
     "@prisma/client": "^6.18.0",
     "ai": "^5.0.70",
+    "js-yaml": "^4.1.0",
     "langsmith": "^0.3.75",
     "lodash": "^4.17.21",
     "next": "15.5.4",
@@ -29,6 +30,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
+    "@types/js-yaml": "^4.0.9",
     "@types/lodash": "^4.17.20",
     "@types/node": "^20",
     "@types/react": "^19",

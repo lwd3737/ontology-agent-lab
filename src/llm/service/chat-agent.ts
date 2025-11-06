@@ -1,7 +1,7 @@
 import OntologyDefinition from "@/ontology/ontology-definition";
 import { openai } from "@ai-sdk/openai";
 import { TextPart, type UIMessage } from "ai";
-import generateQueryDslPrompt from "../prompt/query-dsl-generation";
+import generateQueryDslPrompt from "../prompt/instructions/query-dsl-generation";
 import {
   OntologyQueryDslSchema,
   type OntologyQueryDSL,
@@ -15,7 +15,7 @@ import PrismaQueryResultToOntologyTranslator, {
 } from "@/connector/prisma/query-result-to-ontology-translator";
 import type { QueryCompileResult } from "@/connector/query-compiler";
 import { executeQueriesThenTranslateToOntology } from "@/connector/query-executor";
-import OntologyDefinitionContextBuilder from "../adapter/ontology-definition-context-builder";
+import OntologyDefinitionContextBuilder from "../prompt/contexts/ontology-definition-context-builder";
 import UserQueryResponseService from "./user-query-response";
 
 const { generateObject } = wrapAISDK(ai);

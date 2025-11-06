@@ -1,10 +1,10 @@
 import type { PipelineStepResult } from "@/connector/prisma/query-result-to-ontology-translator";
 import { wrapAISDK } from "langsmith/experimental/vercel";
 import * as ai from "ai";
-import OntologyDefinitionContextBuilder from "../adapter/ontology-definition-context-builder";
+import OntologyDefinitionContextBuilder from "../prompt/contexts/ontology-definition-context-builder";
 import { openai } from "@ai-sdk/openai";
-import generateUserQueryResponseInstruction from "../prompt/usery-query-response";
-import OBJECT_INSTANCE_FORMAT_CONTEXT from "../prompt/object-instance-format-context";
+import generateUserQueryResponseInstruction from "../prompt/instructions/usery-query-response";
+import OBJECT_INSTANCE_FORMAT_CONTEXT from "../prompt/contexts/object-instance-format";
 import z from "zod";
 import type OntologyDefinition from "@/ontology/ontology-definition";
 const { generateObject } = wrapAISDK(ai);
@@ -20,20 +20,24 @@ const UserQueryResponseSchema = z.object({
       objects: z
         .record(
           z.string().describe("Ontology object type id"),
-          z.array(
-            z.object({
-              rid: z.string().describe("The resource ID of the object."),
-              objectType: z
-                .string()
-                .describe("The ontology object type id of the object."),
-              properties: z
-                .record(z.string().describe("Ontology property id"), z.any())
-                .describe("The properties of the object."),
-            })
-          ).describe("Array of object instances of this type")
+          z
+            .array(
+              z.object({
+                rid: z.string().describe("The resource ID of the object."),
+                objectType: z
+                  .string()
+                  .describe("The ontology object type id of the object."),
+                properties: z
+                  .record(z.string().describe("Ontology property id"), z.any())
+                  .describe("The properties of the object."),
+              })
+            )
+            .describe("Array of object instances of this type")
         )
         .optional()
-        .describe("The ontology objects referenced in the response. Each key is an object type ID, and the value is an array of object instances of that type."),
+        .describe(
+          "The ontology objects referenced in the response. Each key is an object type ID, and the value is an array of object instances of that type."
+        ),
     })
     .optional()
     .describe(

@@ -1,4 +1,4 @@
-import OntologyDefinitionContextBuilder from "@/llm/adapter/ontology-definition-context-builder";
+import OntologyDefinitionContextBuilder from "@/llm/prompt/contexts/ontology-definition-context-builder";
 import {
   OntologyQueryDslSchema,
   type OntologyQueryDSL,

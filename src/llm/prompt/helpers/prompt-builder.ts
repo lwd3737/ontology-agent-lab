@@ -16,7 +16,16 @@ export default class PromptBuilder {
     return this;
   }
 
-  public bullet(lines: string[]): this {
+  public bullet(lines: string[], depth = 1): this {
+    if (depth > 1) {
+      return this.lines(
+        this.indentLines(
+          lines.map((line) => `- ${line}`),
+          depth
+        )
+      );
+    }
+
     return this.lines(lines.map((line) => `- ${line}`));
   }
 
@@ -45,6 +54,15 @@ export default class PromptBuilder {
   public newLine(): this {
     this._lines.push("");
     return this;
+  }
+
+  public indentLine(line: string, level = 1): string {
+    const pad = "  ".repeat(level);
+    return `${pad}${line}`;
+  }
+
+  public indentLines(lines: string[], level = 1): string[] {
+    return lines.map((line) => this.indentLine(line, level));
   }
 
   public build(): string {

@@ -28,7 +28,7 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    "src/llm/adapter/ontology-definition-context-builder.ts"
+    "src/llm/prompt/contexts/ontology-definition-context-builder.ts"
   ],
   "exclude": ["node_modules"]
 }

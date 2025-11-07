@@ -5,9 +5,9 @@ import * as ai from "ai";
 import { wrapAISDK } from "langsmith/experimental/vercel";
 import { traceable } from "langsmith/traceable";
 import type QueryCompiler from "@/connector/query-compiler";
-import PrismaQueryResultTranslator, {
+import PrismaQueriesResultTranslator, {
   type PipelineStepResult,
-} from "@/connector/prisma/prisma-query-result-translator";
+} from "@/connector/prisma/prisma-queries-result-translator";
 import type { QueryCompileResult } from "@/connector/query-compiler";
 import { executeQueriesThenTranslateToOntology } from "@/connector/query-executor";
 import UserQueryResponseService from "./user-query-response";
@@ -17,7 +17,7 @@ const { generateObject } = wrapAISDK(ai);
 
 export default class ChatAgentService {
   private readonly prismaQueryResultToOntologyTranslator =
-    new PrismaQueryResultTranslator();
+    new PrismaQueriesResultTranslator();
   private readonly userQueryResponseService: UserQueryResponseService;
   private readonly queryDSLGenerator: QueryDSLGenerator;
 

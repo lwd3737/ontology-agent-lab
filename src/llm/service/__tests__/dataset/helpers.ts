@@ -1,15 +1,23 @@
-type Dataset = {
-  inputs: { [key: string]: any[] };
-  referenceOutputs?: { [key: string]: any[] };
+type Dataset<
+  TInputs extends Record<string, unknown>,
+  TOutputs extends Record<string, unknown> | never = never
+> = {
+  inputs: TInputs;
+  referenceOutputs?: TOutputs;
 }[];
 
-export const formatDataset = (
-  inputs: Record<string, readonly any[]>,
-  referenceOutputs?: Record<string, readonly any[]>
-): any[] => {
-  const dataset: Dataset = [];
+export const formatDataset = <
+  TInputs extends Record<string, unknown>,
+  TOutputs extends Record<string, unknown> | never = never
+>(
+  inputs: { [K in keyof TInputs]: TInputs[K][] },
+  referenceOutputs?: TOutputs extends never
+    ? never
+    : { [K in keyof TOutputs]: TOutputs[K][] }
+): Dataset<TInputs, TOutputs> => {
+  const dataset: Dataset<TInputs, TOutputs> = [];
 
-  const size = Object.values(inputs)[0].length;
+  const size = Object.values(inputs)[0]?.length ?? 0;
   const inputEntries = Object.entries(inputs);
   const referenceOutputsEntries = referenceOutputs
     ? Object.entries(referenceOutputs)
@@ -17,18 +25,21 @@ export const formatDataset = (
 
   for (let i = 0; i < size; i++) {
     dataset[i] = {
-      inputs: {},
+      inputs: {} as TInputs,
     };
 
     inputEntries.forEach(([key, input]) => {
       if (input.length !== size) {
         throw new Error(`Input ${key} has different length than other inputs`);
       }
-      dataset[i].inputs[key] = input[i];
+
+      dataset[i].inputs[key as keyof TInputs] = input[
+        i
+      ] as TInputs[keyof TInputs];
     });
 
     if (referenceOutputsEntries) {
-      dataset[i].referenceOutputs = {};
+      dataset[i].referenceOutputs = {} as TOutputs;
 
       referenceOutputsEntries.forEach(([key, output]) => {
         if (output.length !== size) {
@@ -37,7 +48,9 @@ export const formatDataset = (
           );
         }
 
-        dataset[i].referenceOutputs![key] = output[i];
+        dataset[i].referenceOutputs![key as keyof TOutputs] = output[
+          i
+        ] as TOutputs[keyof TOutputs];
       });
     }
   }

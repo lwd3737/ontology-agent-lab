@@ -1,3 +1,5 @@
+import type { OntologyQueryDSL } from "@/ontology-query/dsl-schema";
+
 const QueryDSLDataset = {
   /**
    * 단순 조회 쿼리 데이터셋
@@ -50,6 +52,8 @@ const QueryDSLDataset = {
       ],
     },
   ],
-} as const;
+} satisfies {
+  simpleLookup: OntologyQueryDSL[];
+};
 
 export default QueryDSLDataset;

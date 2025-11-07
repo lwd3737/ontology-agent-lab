@@ -1,6 +1,6 @@
 import type { PrismaQuery } from "./prisma/prisma-client-compiler";
 import { executePrismaQueries } from "./prisma/prisma-query-executor";
-import PrismaQueryResultTranslator from "./prisma/prisma-query-result-translator";
+import PrismaQueriesResultTranslator from "./prisma/prisma-queries-result-translator";
 import type { OntologyQueryDSL } from "@/ontology-query/dsl-schema";
 
 export type Query = PrismaQuery;
@@ -13,7 +13,7 @@ export const executeQueriesThenTranslateToOntology = async (
   switch (type) {
     case "prisma": {
       const queryResults = await executePrismaQueries(queries as PrismaQuery[]);
-      const translator = new PrismaQueryResultTranslator();
+      const translator = new PrismaQueriesResultTranslator();
       return translator.translateToOntology(queryResults, queryDSL);
     }
 

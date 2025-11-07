@@ -1,4 +1,4 @@
-import type { PipelineStepResult } from "@/connector/prisma/prisma-query-result-translator";
+import type { PipelineStepResult } from "@/connector/prisma/prisma-queries-result-translator";
 import type { OntologyQueryDSL } from "@/ontology-query/dsl-schema";
 import type { PrismaQueryResult } from "@/connector/prisma/prisma-query-executor";
 import { isEqual } from "lodash";

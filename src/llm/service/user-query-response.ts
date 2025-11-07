@@ -1,4 +1,4 @@
-import type { PipelineStepResult } from "@/connector/prisma/prisma-query-result-translator";
+import type { PipelineStepResult } from "@/connector/prisma/prisma-queries-result-translator";
 import { wrapAISDK } from "langsmith/experimental/vercel";
 import * as ai from "ai";
 import OntologyDefinitionContextBuilder from "../prompt/contexts/ontology-definition-context-builder";

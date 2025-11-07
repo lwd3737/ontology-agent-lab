@@ -20,11 +20,11 @@ describe("Chat agent service", () => {
   ls.describe("Query DSL -> Prisma Query 컴파일", () => {
     ls.test.each<
       { queryDSL: OntologyQueryDSL },
-      { compiledQueries: PrismaQueryCompileResult }
+      { prismaQueries: PrismaQueryCompileResult }
     >(
       formatDataset(
         { queryDSL: QueryDSLDataset.simpleLookup },
-        { compiledQueries: PrismaQueryDataset.simpleLookup }
+        { prismaQueries: PrismaQueryDataset.simpleLookup }
       )
     )(
       "단순 Query DSL 컴파일 성공",
@@ -40,7 +40,7 @@ describe("Chat agent service", () => {
 
         const evaluation = await evaluate({
           output: compiledResult.pipeline,
-          expected: referenceOutputs!.compiledQueries.pipeline,
+          expected: referenceOutputs!.prismaQueries.pipeline,
         });
 
         if (evaluation.score < 1) {

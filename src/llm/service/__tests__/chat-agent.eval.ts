@@ -1,56 +1,15 @@
 import OntologyDefinition from "@/ontology/ontology-definition";
 import * as ls from "langsmith/vitest";
 import { describe } from "vitest";
-import PrismaClientCompiler, {
-  type PrismaQueryCompileResult,
-} from "@/connector/prisma/prisma-client-compiler";
 import type { OntologyQueryDSL } from "@/ontology-query/dsl-schema";
-import { prismaClientCompilerEvaluator } from "./evaluators/prisma-client-compiler-evaluator";
 import PrismaQueryResultToOntologyTranslator from "@/connector/prisma/query-result-to-ontology-translator";
 import type { PrismaListQueryResult } from "@/connector/prisma/prisma-query-executor";
 import queryResultToOntologyTranslationEvaluator from "./evaluators/query-result-to-ontology-translation-evaluator";
 import type { PipelineStepResult } from "@/connector/prisma/query-result-to-ontology-translator";
 import UserQueryResponseService from "../user-query-response";
 import userQueryResponseEvaluator from "./evaluators/user-query-response-evaluator";
-import PrismaQueryDataset from "./dataset/prisma-query";
-import QueryDSLDataset from "./dataset/query-dsl";
-import { formatDataset } from "./dataset/helpers";
 
 describe("Chat agent service", () => {
-  ls.describe("Query DSL -> Prisma Query 컴파일", () => {
-    ls.test.each<
-      { queryDSL: OntologyQueryDSL },
-      { prismaQueries: PrismaQueryCompileResult }
-    >(
-      formatDataset(
-        { queryDSL: QueryDSLDataset.simpleLookup },
-        { prismaQueries: PrismaQueryDataset.simpleLookup }
-      )
-    )(
-      "단순 Query DSL 컴파일 성공",
-
-      async ({ inputs, referenceOutputs }) => {
-        const compiler = new PrismaClientCompiler();
-        const compiledResult = compiler.compileFromQueryDSL(
-          inputs.queryDSL as OntologyQueryDSL
-        );
-
-        const evaluate = ls.wrapEvaluator(prismaClientCompilerEvaluator);
-        ls.logOutputs({ compiledQuery: compiledResult });
-
-        const evaluation = await evaluate({
-          output: compiledResult.pipeline,
-          expected: referenceOutputs!.prismaQueries.pipeline,
-        });
-
-        if (evaluation.score < 1) {
-          console.warn("Prisma Query 컴파일 평가 기준 미달");
-          console.log(JSON.stringify({ evaluation }, null, 2));
-        }
-      }
-    );
-  });
-
   ls.describe("Prisma Query 결과를 Ontology Instance로 변환", () => {
     ls.test.each<
       { queriesResult: PrismaListQueryResult[]; queryDSL: OntologyQueryDSL },

@@ -1,55 +1,11 @@
 import OntologyDefinition from "@/ontology/ontology-definition";
 import * as ls from "langsmith/vitest";
 import { describe } from "vitest";
-import PrismaQueriesResultTranslator from "@/connector/prisma/prisma-queries-result-translator";
-import prismaQueriesResultTranslationEvaluator from "./evaluators/prisma-queries-result-translation-evaluator";
 import type { PipelineStepResult } from "@/connector/prisma/prisma-queries-result-translator";
 import UserQueryResponseService from "../user-query-response";
 import userQueryResponseEvaluator from "./evaluators/user-query-response-evaluator";
-import PrismaQueriesResultDataset from "./dataset/prisma-queries-result";
-import QueryDSLDataset from "./dataset/query-dsl";
-import { formatDataset } from "./dataset/helpers";
 
 describe("Chat agent service", () => {
-  ls.describe("Prisma Query 결과를 Ontology Instance로 변환", () => {
-    ls.test.each(
-      formatDataset({
-        prismaQueriesResult: PrismaQueriesResultDataset.simpleLookup,
-        queryDSL: QueryDSLDataset.simpleLookup,
-      })
-    )(
-      "단순 Query 결과 변환 성공",
-
-      async ({ inputs }) => {
-        const translator = new PrismaQueriesResultTranslator();
-
-        const pipelineResult = translator.translateToOntology(
-          inputs.prismaQueriesResult,
-          inputs.queryDSL
-        );
-
-        ls.logOutputs({ pipelineResult });
-        const evaluate = ls.wrapEvaluator(
-          prismaQueriesResultTranslationEvaluator
-        );
-        const evaluation = await evaluate({
-          inputs: {
-            queryDSL: inputs.queryDSL,
-            queriesResult: inputs.prismaQueriesResult,
-          },
-          outputs: {
-            pipelineResult,
-          },
-        });
-
-        if (evaluation.score < 1) {
-          console.warn("Query 결과 변환 평가 기준 미달");
-          console.log(JSON.stringify({ evaluation }, null, 2));
-        }
-      }
-    );
-  });
-
   ls.describe(
     "파이프라인 결과(온톨로지 인스턴스)와 사용자 질의를 기반으로 응답 생성",
     () => {

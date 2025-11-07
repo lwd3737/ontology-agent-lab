@@ -16,8 +16,8 @@ describe("PrismaQueriesResultTranslator", () => {
           prismaQueriesResults: PrismaListQueryResult[][];
           queryDSL: OntologyQueryDSL[];
         }>({
-          prismaQueriesResults: PrismaQueriesResultDataset.simpleLookup,
-          queryDSL: QueryDSLDataset.simpleLookup,
+          prismaQueriesResults: PrismaQueriesResultDataset.simpleListQueries,
+          queryDSL: QueryDSLDataset.simpleListQueries,
         })
       )(
         "단순 Query 결과 변환 성공",

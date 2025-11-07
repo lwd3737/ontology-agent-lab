@@ -23,15 +23,20 @@ const UserQueryResponseSchema = z.object({
           z.string().describe("Ontology object type id"),
           z
             .array(
-              z.object({
-                rid: z.string().describe("The resource ID of the object."),
-                objectType: z
-                  .string()
-                  .describe("The ontology object type id of the object."),
-                properties: z
-                  .record(z.string().describe("Ontology property id"), z.any())
-                  .describe("The properties of the object."),
-              })
+              z
+                .object({
+                  rid: z.string().describe("The resource ID of the object."),
+                  objectType: z
+                    .string()
+                    .describe("The ontology object type id of the object."),
+                  properties: z
+                    .record(
+                      z.string().describe("Ontology property id"),
+                      z.any()
+                    )
+                    .describe("The properties of the object."),
+                })
+                .describe("Object instance format")
             )
             .describe("Array of object instances of this type")
         )

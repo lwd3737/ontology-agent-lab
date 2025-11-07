@@ -7,7 +7,7 @@ const QueryDSLDataset = {
    * - [1] category 조회 - properties: id, name
    * - [2] product 조회 - properties: id, name, description, price, stock, categoryId
    */
-  simpleLookup: [
+  simpleListQueries: [
     {
       pipeline: [
         {
@@ -53,7 +53,7 @@ const QueryDSLDataset = {
     },
   ],
 } satisfies {
-  simpleLookup: OntologyQueryDSL[];
+  simpleListQueries: OntologyQueryDSL[];
 };
 
 export default QueryDSLDataset;

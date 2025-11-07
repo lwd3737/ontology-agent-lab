@@ -9,8 +9,8 @@ import { queryDSLEvaluator } from "./evaluators/query-dsl-evaluator";
 describe("Query DSL 생성", () => {
   ls.describe("List queries", () => {
     ls.test.each(
-      formatDataset<{ userQuery: string }>({
-        userQuery: UserQueryDataset.simpleLookup,
+      formatDataset<{ userQuery: string[] }>({
+        userQuery: UserQueryDataset.simpleListQueries,
       })
     )(
       "단순 조회 질의",

@@ -12,11 +12,11 @@ describe("PrismaClientCompiler", () => {
   ls.describe("List queries", () => {
     ls.test.each(
       formatDataset<
-        { queryDSL: OntologyQueryDSL },
-        { prismaQueries: PrismaQueryCompileResult }
+        { queryDSL: OntologyQueryDSL[] },
+        { prismaQueries: PrismaQueryCompileResult[] }
       >(
-        { queryDSL: QueryDSLDataset.simpleLookup },
-        { prismaQueries: PrismaQueryDataset.simpleLookup }
+        { queryDSL: QueryDSLDataset.simpleListQueries },
+        { prismaQueries: PrismaQueryDataset.simpleListQueries }
       )
     )(
       "단순 조회하는 Query DSL 컴파일 성공",

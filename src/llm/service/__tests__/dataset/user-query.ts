@@ -1,5 +1,5 @@
 const UserQueryDataset = {
-  simpleLookup: [
+  simpleListQueries: [
     "모든 고객을 조회해줘",
     "모든 카테고리를 가져와줘",
     "제품 목록을 보여줘",
@@ -16,7 +16,7 @@ const UserQueryDataset = {
     "총 금액이 1000보다 큰 주문을 찾아줘",
   ],
 } satisfies {
-  simpleLookup: string[];
+  simpleListQueries: string[];
   withFilter: string[];
 };
 

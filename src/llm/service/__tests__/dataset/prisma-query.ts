@@ -7,7 +7,7 @@ const PrismaQueryDataset = {
    * - [1] category 조회 - properties: id, name
    * - [2] product 조회 - properties: id, name, description, price, stock, categoryId
    */
-  simpleLookup: [
+  simpleListQueries: [
     {
       type: "prisma",
       pipeline: [
@@ -60,7 +60,7 @@ const PrismaQueryDataset = {
     },
   ],
 } satisfies {
-  simpleLookup: PrismaQueryCompileResult[];
+  simpleListQueries: PrismaQueryCompileResult[];
 };
 
 export default PrismaQueryDataset;

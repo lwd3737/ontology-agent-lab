@@ -16,12 +16,12 @@ class PrismaQueriesResultTranslator {
   private readonly prismaSchemaMapper = PrismaSchemaMapper.create();
 
   public translateToOntology(
-    queryResults: PrismaQueryResult[],
+    queriesResults: PrismaQueryResult[],
     queryDSL: OntologyQueryDSL
   ): PipelineStepResult[] {
     return queryDSL.pipeline.map((step, index) => {
       const { query } = step;
-      const queryResult = queryResults[index];
+      const queryResult = queriesResults[index];
 
       switch (query.type) {
         case "list":

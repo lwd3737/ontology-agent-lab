@@ -1,4 +1,12 @@
+import type { PrismaListQueryResult } from "@/connector/prisma/prisma-query-executor";
+
 const PrismaQueriesResultDataset = {
+  /**
+   * 단순 조회 쿼리 결과 데이터셋
+   * - [0] customer 조회 - properties: id, name, phone
+   * - [1] category 조회 - properties: id, name
+   * - [2] product 조회 - properties: id, name, description, price, stock, categoryId
+   */
   simpleLookup: [
     [
       [
@@ -18,7 +26,9 @@ const PrismaQueriesResultDataset = {
           phone: "010-3456-7890",
         },
       ],
+    ],
 
+    [
       [
         {
           id: "clxcat001",
@@ -33,7 +43,9 @@ const PrismaQueriesResultDataset = {
           name: "의류",
         },
       ],
+    ],
 
+    [
       [
         {
           id: "clxprod001",
@@ -62,6 +74,8 @@ const PrismaQueriesResultDataset = {
       ],
     ],
   ],
+} satisfies {
+  simpleLookup: PrismaListQueryResult[][];
 };
 
 export default PrismaQueriesResultDataset;

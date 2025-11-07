@@ -1,58 +1,77 @@
-type Dataset<
-  TInputs extends Record<string, unknown>,
-  TOutputs extends Record<string, unknown> | never = never
+type FormattedDataset<
+  TInputs extends Record<string, readonly unknown[]>,
+  TOutputs extends Record<string, readonly unknown[]> | undefined
 > = {
-  inputs: TInputs;
-  referenceOutputs?: TOutputs;
+  inputs: { [K in keyof TInputs]: TInputs[K][number] };
+  referenceOutputs?: TOutputs extends undefined
+    ? undefined
+    : { [K in keyof NonNullable<TOutputs>]: NonNullable<TOutputs>[K][number] };
 }[];
 
 export const formatDataset = <
-  TInputs extends Record<string, unknown>,
-  TOutputs extends Record<string, unknown> | never = never
+  TInputs extends Record<string, readonly unknown[]>,
+  TOutputs extends Record<string, readonly unknown[]> | undefined = undefined
 >(
-  inputs: { [K in keyof TInputs]: TInputs[K][] },
-  referenceOutputs?: TOutputs extends never
-    ? never
-    : { [K in keyof TOutputs]: TOutputs[K][] }
-): Dataset<TInputs, TOutputs> => {
-  const dataset: Dataset<TInputs, TOutputs> = [];
+  inputs: TInputs,
+  referenceOutputs?: TOutputs
+): FormattedDataset<TInputs, TOutputs> => {
+  const dataset: FormattedDataset<TInputs, TOutputs> = [];
 
   const size = Object.values(inputs)[0]?.length ?? 0;
-  const inputEntries = Object.entries(inputs);
+  const inputEntries = Object.entries(inputs) as Array<
+    [keyof TInputs, TInputs[keyof TInputs]]
+  >;
   const referenceOutputsEntries = referenceOutputs
-    ? Object.entries(referenceOutputs)
+    ? (Object.entries(referenceOutputs) as Array<
+        [
+          keyof NonNullable<TOutputs>,
+          NonNullable<TOutputs>[keyof NonNullable<TOutputs>]
+        ]
+      >)
     : undefined;
 
   for (let i = 0; i < size; i++) {
-    dataset[i] = {
-      inputs: {} as TInputs,
+    const entry = {
+      inputs: {} as { [K in keyof TInputs]: TInputs[K][number] },
+      referenceOutputs: undefined as TOutputs extends undefined
+        ? undefined
+        : {
+            [K in keyof NonNullable<TOutputs>]: NonNullable<TOutputs>[K][number];
+          },
     };
 
-    inputEntries.forEach(([key, input]) => {
-      if (input.length !== size) {
-        throw new Error(`Input ${key} has different length than other inputs`);
+    inputEntries.forEach(([key, values]) => {
+      if (values.length !== size) {
+        throw new Error(
+          `Input ${String(key)} has different length than other inputs`
+        );
       }
 
-      dataset[i].inputs[key as keyof TInputs] = input[
-        i
-      ] as TInputs[keyof TInputs];
+      entry.inputs[key] = values[i] as TInputs[typeof key][number];
     });
 
     if (referenceOutputsEntries) {
-      dataset[i].referenceOutputs = {} as TOutputs;
+      entry.referenceOutputs = {} as TOutputs extends undefined
+        ? undefined
+        : {
+            [K in keyof NonNullable<TOutputs>]: NonNullable<TOutputs>[K][number];
+          };
 
-      referenceOutputsEntries.forEach(([key, output]) => {
-        if (output.length !== size) {
+      referenceOutputsEntries.forEach(([key, values]) => {
+        if (values.length !== size) {
           throw new Error(
-            `Reference output ${key} has different length than other reference outputs`
+            `Reference output ${String(
+              key
+            )} has different length than other reference outputs`
           );
         }
 
-        dataset[i].referenceOutputs![key as keyof TOutputs] = output[
-          i
-        ] as TOutputs[keyof TOutputs];
+        (entry.referenceOutputs as Record<string, unknown>)[key as string] =
+          values[i] as NonNullable<TOutputs>[typeof key][number];
       });
     }
+
+    dataset.push(entry);
   }
 
   return dataset;

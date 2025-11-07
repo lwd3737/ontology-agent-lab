@@ -9,7 +9,7 @@ import PrismaClientCompiler from "@/connector/prisma/prisma-client-compiler";
 import { prismaClientCompilerEvaluator } from "./evaluators/prisma-client-compiler-evaluator";
 
 describe("PrismaClientCompiler", () => {
-  describe("List queries", () => {
+  ls.describe("List queries", () => {
     ls.test.each(
       formatDataset<
         { queryDSL: OntologyQueryDSL },

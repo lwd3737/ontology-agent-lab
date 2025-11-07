@@ -1,10 +1,8 @@
 import OntologyDefinition from "@/ontology/ontology-definition";
 import * as ls from "langsmith/vitest";
 import { describe } from "vitest";
-import type { OntologyQueryDSL } from "@/ontology-query/dsl-schema";
 import PrismaQueriesResultTranslator from "@/connector/prisma/prisma-queries-result-translator";
-import type { PrismaListQueryResult } from "@/connector/prisma/prisma-query-executor";
-import queryResultToOntologyTranslationEvaluator from "./evaluators/query-result-to-ontology-translation-evaluator";
+import prismaQueriesResultTranslationEvaluator from "./evaluators/prisma-queries-result-translation-evaluator";
 import type { PipelineStepResult } from "@/connector/prisma/prisma-queries-result-translator";
 import UserQueryResponseService from "../user-query-response";
 import userQueryResponseEvaluator from "./evaluators/user-query-response-evaluator";
@@ -15,10 +13,7 @@ import { formatDataset } from "./dataset/helpers";
 describe("Chat agent service", () => {
   ls.describe("Prisma Query 결과를 Ontology Instance로 변환", () => {
     ls.test.each(
-      formatDataset<{
-        prismaQueriesResult: PrismaListQueryResult[];
-        queryDSL: OntologyQueryDSL;
-      }>({
+      formatDataset({
         prismaQueriesResult: PrismaQueriesResultDataset.simpleLookup,
         queryDSL: QueryDSLDataset.simpleLookup,
       })
@@ -35,7 +30,7 @@ describe("Chat agent service", () => {
 
         ls.logOutputs({ pipelineResult });
         const evaluate = ls.wrapEvaluator(
-          queryResultToOntologyTranslationEvaluator
+          prismaQueriesResultTranslationEvaluator
         );
         const evaluation = await evaluate({
           inputs: {

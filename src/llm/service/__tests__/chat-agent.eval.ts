@@ -2,10 +2,10 @@ import OntologyDefinition from "@/ontology/ontology-definition";
 import * as ls from "langsmith/vitest";
 import { describe } from "vitest";
 import type { OntologyQueryDSL } from "@/ontology-query/dsl-schema";
-import PrismaQueryResultToOntologyTranslator from "@/connector/prisma/query-result-to-ontology-translator";
+import PrismaQueryResultTranslator from "@/connector/prisma/prisma-query-result-translator";
 import type { PrismaListQueryResult } from "@/connector/prisma/prisma-query-executor";
 import queryResultToOntologyTranslationEvaluator from "./evaluators/query-result-to-ontology-translation-evaluator";
-import type { PipelineStepResult } from "@/connector/prisma/query-result-to-ontology-translator";
+import type { PipelineStepResult } from "@/connector/prisma/prisma-query-result-translator";
 import UserQueryResponseService from "../user-query-response";
 import userQueryResponseEvaluator from "./evaluators/user-query-response-evaluator";
 
@@ -82,9 +82,9 @@ describe("Chat agent service", () => {
       "단순 Query 결과 변환 성공",
 
       async ({ inputs }) => {
-        const translator = new PrismaQueryResultToOntologyTranslator();
+        const translator = new PrismaQueryResultTranslator();
 
-        const pipelineResult = translator.translate(
+        const pipelineResult = translator.translateToOntology(
           inputs.queriesResult,
           inputs.queryDSL
         );

@@ -12,10 +12,10 @@ export interface PipelineStepResult {
   objectType: string;
   objectInstances: ObjectInstance[];
 }
-class PrismaQueryResultToOntologyTranslator {
+class PrismaQueryResultTranslator {
   private readonly prismaSchemaMapper = PrismaSchemaMapper.create();
 
-  public translate(
+  public translateToOntology(
     queryResults: PrismaQueryResult[],
     queryDSL: OntologyQueryDSL
   ): PipelineStepResult[] {
@@ -87,4 +87,4 @@ class PrismaQueryResultToOntologyTranslator {
   }
 }
 
-export default PrismaQueryResultToOntologyTranslator;
+export default PrismaQueryResultTranslator;

@@ -8,7 +8,11 @@ import { queryDSLEvaluator } from "./evaluators/query-dsl-evaluator";
 
 describe("Query DSL 생성", () => {
   ls.describe("List queries", () => {
-    ls.test.each(formatDataset({ userQuery: UserQueryDataset.simpleLookup }))(
+    ls.test.each(
+      formatDataset<{ userQuery: string }>({
+        userQuery: UserQueryDataset.simpleLookup,
+      })
+    )(
       "단순 조회 질의",
 
       async ({ inputs }) => {

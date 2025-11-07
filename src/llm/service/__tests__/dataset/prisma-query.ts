@@ -1,3 +1,5 @@
+import type { PrismaQueryCompileResult } from "@/connector/prisma/prisma-client-compiler";
+
 const PrismaQueryDataset = {
   /**
    * 단순 조회 쿼리 데이터셋
@@ -57,6 +59,8 @@ const PrismaQueryDataset = {
       ],
     },
   ],
-} as const;
+} satisfies {
+  simpleLookup: PrismaQueryCompileResult[];
+};
 
 export default PrismaQueryDataset;

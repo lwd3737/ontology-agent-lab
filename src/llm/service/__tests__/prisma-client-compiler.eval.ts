@@ -10,11 +10,11 @@ import { prismaClientCompilerEvaluator } from "./evaluators/prisma-client-compil
 
 describe("PrismaClientCompiler", () => {
   describe("List queries", () => {
-    ls.test.each<
-      { queryDSL: OntologyQueryDSL },
-      { prismaQueries: PrismaQueryCompileResult }
-    >(
-      formatDataset(
+    ls.test.each(
+      formatDataset<
+        { queryDSL: OntologyQueryDSL },
+        { prismaQueries: PrismaQueryCompileResult }
+      >(
         { queryDSL: QueryDSLDataset.simpleLookup },
         { prismaQueries: PrismaQueryDataset.simpleLookup }
       )

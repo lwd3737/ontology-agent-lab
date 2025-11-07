@@ -15,6 +15,9 @@ const UserQueryDataset = {
     "가격이 50 이상이고 재고가 5 이상인 제품을 찾아줘",
     "총 금액이 1000보다 큰 주문을 찾아줘",
   ],
-} as const;
+} satisfies {
+  simpleLookup: string[];
+  withFilter: string[];
+};
 
 export default UserQueryDataset;

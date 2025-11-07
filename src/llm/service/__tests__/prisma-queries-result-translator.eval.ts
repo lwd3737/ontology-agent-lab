@@ -3,10 +3,10 @@ import * as ls from "langsmith/vitest";
 import type { PrismaListQueryResult } from "@/connector/prisma/prisma-query-executor";
 import type { OntologyQueryDSL } from "@/ontology-query/dsl-schema";
 import PrismaQueriesResultTranslator from "@/connector/prisma/prisma-queries-result-translator";
-import prismaQueriesResultTranslationEvaluator from "./evaluators/prisma-queries-result-translation-evaluator";
 import { formatDataset } from "./dataset/helpers";
 import PrismaQueriesResultDataset from "./dataset/prisma-queries-result";
 import QueryDSLDataset from "./dataset/query-dsl";
+import prismaQueriesResultTranslationEvaluator from "./evaluators/prisma-queries-result-translation-evaluator";
 
 describe("PrismaQueriesResultTranslator", () => {
   describe("Prisma Query 결과를 Ontology Instance로 변환", () => {

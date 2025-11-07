@@ -3,8 +3,9 @@ import type { OntologyQueryDSL } from "@/ontology-query/dsl-schema";
 import type { PrismaQueryResult } from "@/connector/prisma/prisma-query-executor";
 import { isEqual } from "lodash";
 import PrismaSchemaMapper from "@/connector/prisma/schema-mapping/schema-mapper";
+import type { ObjectInstance } from "@/ontology/ontology-instance";
 
-type InstanceComparison = {
+type ObjectInstanceComparison = {
   index: number;
   issues: string[];
   missingRequestedProperties: string[];
@@ -27,7 +28,7 @@ type StepEvaluation = {
       expected: number;
       actual: number;
     };
-    instanceComparisons: InstanceComparison[];
+    instanceComparisons: ObjectInstanceComparison[];
     extraInstanceIndexes: number[];
     missingOutputStep?: boolean;
   };
@@ -75,173 +76,13 @@ const prismaQueriesResultTranslationEvaluator = ({
   }
 
   const stepEvaluations: StepEvaluation[] = queryDSL.pipeline.map(
-    (dslStep, stepIndex) => {
-      const expectedObjectType = dslStep.query.objectType;
-      const requestedProperties = dslStep.query.properties ?? [];
-      const expectedQueryResult = queriesResult[stepIndex] ?? [];
-      const expectedInstances = expectedQueryResult.map((row) => {
-        const primaryKeyField = prismaSchemaMapper.mapToPrismaPrimaryKeyField(
-          expectedObjectType,
-          row
-        );
-        const ontologyProperties = prismaSchemaMapper.mapToOntologyProperties(
-          row,
-          expectedObjectType
-        );
-
-        return {
-          rid: primaryKeyField.value,
-          objectType: expectedObjectType,
-          properties: ontologyProperties,
-          raw: row,
-        };
-      });
-      const pipelineStep = pipelineResult[stepIndex];
-
-      if (!pipelineStep) {
-        return {
-          index: stepIndex,
-          stepName: dslStep.name,
-          objectType: expectedObjectType,
-          isSuccess: false,
-          details: {
-            stepNameMatched: false,
-            objectTypeMatched: false,
-            instanceCount: {
-              expected: expectedInstances.length,
-              actual: 0,
-            },
-            instanceComparisons: [],
-            extraInstanceIndexes: [],
-            missingOutputStep: true,
-          },
-        };
-      }
-
-      const actualObjectInstances = pipelineStep.objectInstances ?? [];
-
-      const stepDetails: StepEvaluation["details"] = {
-        stepNameMatched: pipelineStep.stepName === dslStep.name,
-        objectTypeMatched: pipelineStep.objectType === expectedObjectType,
-        instanceCount: {
-          expected: expectedInstances.length,
-          actual: actualObjectInstances.length,
-        },
-        instanceComparisons: [],
-        extraInstanceIndexes: [],
-      };
-
-      if (expectedInstances.length !== actualObjectInstances.length) {
-        return {
-          index: stepIndex,
-          stepName: pipelineStep.stepName,
-          objectType: pipelineStep.objectType,
-          isSuccess: false,
-          details: stepDetails,
-        };
-      }
-
-      const maxInstanceCount = Math.max(
-        expectedInstances.length,
-        actualObjectInstances.length
-      );
-
-      for (let i = 0; i < maxInstanceCount; i++) {
-        const expectedInstance = expectedInstances[i];
-        const actualObjectInstance = actualObjectInstances[i];
-
-        if (!expectedInstance) {
-          stepDetails.extraInstanceIndexes.push(i);
-          continue;
-        }
-
-        if (!actualObjectInstance) {
-          stepDetails.instanceComparisons.push({
-            index: i,
-            issues: ["missingInstance"],
-            missingRequestedProperties: requestedProperties.slice(),
-            propertyValueMismatches: [],
-          });
-          continue;
-        }
-
-        const comparison: InstanceComparison = {
-          index: i,
-          issues: [],
-          missingRequestedProperties: [],
-          propertyValueMismatches: [],
-        };
-
-        if (actualObjectInstance.objectType !== expectedObjectType) {
-          comparison.issues.push("objectTypeMismatch");
-        }
-
-        if (!actualObjectInstance.rid) {
-          comparison.issues.push("missingRid");
-        }
-
-        const actualProperties = actualObjectInstance.properties ?? {};
-        const actualPropertyIds = Object.keys(actualProperties);
-
-        // Only enforce requested properties when they were explicitly asked for
-        const missingRequested = requestedProperties.filter(
-          (propertyId) => !actualPropertyIds.includes(propertyId)
-        );
-
-        if (missingRequested.length > 0) {
-          comparison.missingRequestedProperties.push(...missingRequested);
-        }
-
-        const propertiesToCheck =
-          requestedProperties.length > 0
-            ? requestedProperties
-            : Object.keys(expectedInstance.properties);
-
-        propertiesToCheck.forEach((propertyId) => {
-          const expectedValue = expectedInstance.properties[propertyId];
-          const actualValue = actualProperties[propertyId];
-
-          if (
-            !Object.prototype.hasOwnProperty.call(actualProperties, propertyId)
-          ) {
-            comparison.missingRequestedProperties.push(propertyId);
-            return;
-          }
-
-          if (!isEqual(expectedValue, actualValue)) {
-            comparison.propertyValueMismatches.push({
-              propertyId,
-              expected: expectedValue,
-              actual: actualValue,
-            });
-          }
-        });
-
-        stepDetails.instanceComparisons.push(comparison);
-      }
-
-      const isSuccess =
-        stepDetails.stepNameMatched &&
-        stepDetails.objectTypeMatched &&
-        stepDetails.instanceCount.expected ===
-          stepDetails.instanceCount.actual &&
-        stepDetails.extraInstanceIndexes.length === 0 &&
-        stepDetails.instanceComparisons.every((comparison) => {
-          return (
-            comparison.issues.length === 0 &&
-            comparison.missingRequestedProperties.length === 0 &&
-            comparison.propertyValueMismatches.length === 0
-          );
-        });
-
-      return {
-        index: stepIndex,
-        stepName: pipelineStep.stepName,
-        objectType: pipelineStep.objectType,
-        isSuccess,
-        details: stepDetails,
-      };
-    }
+    (dslStep, stepIndex) =>
+      evaluateStep(
+        dslStep,
+        pipelineResult[stepIndex],
+        queriesResult[stepIndex],
+        stepIndex
+      )
   );
 
   const successfulSteps = stepEvaluations.filter(
@@ -261,3 +102,200 @@ const prismaQueriesResultTranslationEvaluator = ({
 };
 
 export default prismaQueriesResultTranslationEvaluator;
+
+const evaluateStep = (
+  dslStep: OntologyQueryDSL["pipeline"][number],
+  pipelineStep: PipelineStepResult | undefined,
+  queryResult: PrismaQueryResult | undefined,
+  stepIndex: number
+): StepEvaluation => {
+  const expectedObjectType = dslStep.query.objectType;
+  const requestedProperties = dslStep.query.properties ?? [];
+  const expectedObjectInstances = buildExpectedObjectInstances(
+    expectedObjectType,
+    queryResult
+  );
+
+  if (!pipelineStep) {
+    return createMissingStepEvaluation(
+      dslStep,
+      expectedObjectInstances.length,
+      stepIndex
+    );
+  }
+
+  const actualObjectInstances = pipelineStep.objectInstances ?? [];
+
+  const details: StepEvaluation["details"] = {
+    stepNameMatched: pipelineStep.stepName === dslStep.name,
+    objectTypeMatched: pipelineStep.objectType === expectedObjectType,
+    instanceCount: {
+      expected: expectedObjectInstances.length,
+      actual: actualObjectInstances.length,
+    },
+    instanceComparisons: [],
+    extraInstanceIndexes: [],
+  };
+
+  if (details.instanceCount.expected !== details.instanceCount.actual) {
+    return {
+      index: stepIndex,
+      stepName: pipelineStep.stepName,
+      objectType: pipelineStep.objectType,
+      isSuccess: false,
+      details,
+    };
+  }
+
+  for (let index = 0; index < expectedObjectInstances.length; index++) {
+    const expectedObjectInstance = expectedObjectInstances[index];
+    const actualObjectInstance = actualObjectInstances[index];
+
+    if (!actualObjectInstance) {
+      details.instanceComparisons.push({
+        index,
+        issues: ["missingInstance"],
+        missingRequestedProperties: requestedProperties,
+        propertyValueMismatches: [],
+      });
+      continue;
+    }
+
+    details.instanceComparisons.push(
+      compareObjectInstance(
+        expectedObjectInstance,
+        actualObjectInstance,
+        requestedProperties,
+        expectedObjectType,
+        index
+      )
+    );
+  }
+
+  return {
+    index: stepIndex,
+    stepName: pipelineStep.stepName,
+    objectType: pipelineStep.objectType,
+    isSuccess: isStepSuccessful(details),
+    details,
+  };
+};
+
+const buildExpectedObjectInstances = (
+  objectType: string,
+  queryResult: PrismaQueryResult | undefined
+): ObjectInstance[] => {
+  const modelInstances = queryResult ?? [];
+  return modelInstances.map((modelInstance) => {
+    const primaryKeyField = prismaSchemaMapper.mapToPrismaPrimaryKeyField(
+      objectType,
+      modelInstance
+    );
+    const ontologyProperties = prismaSchemaMapper.mapToOntologyProperties(
+      modelInstance,
+      objectType
+    );
+
+    return {
+      rid: primaryKeyField.value,
+      objectType,
+      properties: ontologyProperties,
+    };
+  });
+};
+
+const createMissingStepEvaluation = (
+  dslStep: OntologyQueryDSL["pipeline"][number],
+  expectedInstanceCount: number,
+  stepIndex: number
+): StepEvaluation => ({
+  index: stepIndex,
+  stepName: dslStep.name,
+  objectType: dslStep.query.objectType,
+  isSuccess: false,
+  details: {
+    stepNameMatched: false,
+    objectTypeMatched: false,
+    instanceCount: {
+      expected: expectedInstanceCount,
+      actual: 0,
+    },
+    instanceComparisons: [],
+    extraInstanceIndexes: [],
+    missingOutputStep: true,
+  },
+});
+
+const compareObjectInstance = (
+  expectedObjectInstance: ObjectInstance,
+  actualObjectInstance: PipelineStepResult["objectInstances"][number],
+  requestedProperties: string[],
+  expectedObjectType: string,
+  instanceIndex: number
+): ObjectInstanceComparison => {
+  const comparison: ObjectInstanceComparison = {
+    index: instanceIndex,
+    issues: [],
+    missingRequestedProperties: [],
+    propertyValueMismatches: [],
+  };
+
+  if (actualObjectInstance.objectType !== expectedObjectType) {
+    comparison.issues.push("objectTypeMismatch");
+  }
+
+  if (!actualObjectInstance.rid) {
+    comparison.issues.push("missingRid");
+  }
+
+  const actualProperties = actualObjectInstance.properties ?? {};
+  const actualPropertyIds = Object.keys(actualProperties);
+
+  requestedProperties
+    .filter((propertyId) => !actualPropertyIds.includes(propertyId))
+    .forEach((propertyId) => {
+      if (!comparison.missingRequestedProperties.includes(propertyId)) {
+        comparison.missingRequestedProperties.push(propertyId);
+      }
+    });
+
+  actualPropertyIds
+    .filter((propertyId) => !expectedObjectInstance.properties[propertyId])
+    .forEach((propertyId) => {
+      comparison.issues.push(`unexpectedProperty:${propertyId}`);
+    });
+
+  requestedProperties.forEach((propertyId) => {
+    if (!actualProperties[propertyId]) {
+      if (!comparison.missingRequestedProperties.includes(propertyId)) {
+        comparison.missingRequestedProperties.push(propertyId);
+      }
+      return;
+    }
+
+    const expectedValue = expectedObjectInstance.properties[propertyId];
+    const actualValue = actualProperties[propertyId];
+
+    if (!isEqual(expectedValue, actualValue)) {
+      comparison.propertyValueMismatches.push({
+        propertyId,
+        expected: expectedValue,
+        actual: actualValue,
+      });
+    }
+  });
+
+  return comparison;
+};
+
+const isStepSuccessful = (details: StepEvaluation["details"]): boolean =>
+  details.stepNameMatched &&
+  details.objectTypeMatched &&
+  details.instanceCount.expected === details.instanceCount.actual &&
+  details.extraInstanceIndexes.length === 0 &&
+  details.instanceComparisons.every(
+    (comparison) =>
+      comparison.issues.length === 0 &&
+      comparison.missingRequestedProperties.length === 0 &&
+      comparison.propertyValueMismatches.length === 0
+  );

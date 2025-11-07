@@ -1,14 +1,14 @@
 import { describe } from "vitest";
 import * as ls from "langsmith/vitest";
-import { formatInputs } from "./dataset/helpers";
-import UserQueryInputs from "./dataset/inputs/user-query";
+import { formatDataset } from "./dataset/helpers";
+import UserQueryDataset from "./dataset/user-query";
 import QueryDSLGenerator from "../query-dsl-generator";
 import OntologyDefinition from "@/ontology/ontology-definition";
 import { queryDSLEvaluator } from "./evaluators/query-dsl-evaluator";
 
 describe("Query DSL 생성", () => {
   ls.describe("List queries", () => {
-    ls.test.each(formatInputs("userQuery", UserQueryInputs.simpleLookup))(
+    ls.test.each(formatDataset({ userQuery: UserQueryDataset.simpleLookup }))(
       "단순 조회 질의",
 
       async ({ inputs }) => {

@@ -1,4 +1,4 @@
-const UserQueryInputs = {
+const UserQueryDataset = {
   simpleLookup: [
     "모든 고객을 조회해줘",
     "모든 카테고리를 가져와줘",
@@ -17,4 +17,4 @@ const UserQueryInputs = {
   ],
 } as const;
 
-export default UserQueryInputs;
+export default UserQueryDataset;

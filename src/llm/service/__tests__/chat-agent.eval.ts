@@ -1,6 +1,5 @@
 import OntologyDefinition from "@/ontology/ontology-definition";
 import * as ls from "langsmith/vitest";
-import ChatAgentService from "../chat-agent";
 import { describe } from "vitest";
 import PrismaClientCompiler, {
   type PrismaQueryCompileResult,
@@ -13,81 +12,21 @@ import queryResultToOntologyTranslationEvaluator from "./evaluators/query-result
 import type { PipelineStepResult } from "@/connector/prisma/query-result-to-ontology-translator";
 import UserQueryResponseService from "../user-query-response";
 import userQueryResponseEvaluator from "./evaluators/user-query-response-evaluator";
+import PrismaQueryDataset from "./dataset/prisma-query";
+import QueryDSLDataset from "./dataset/query-dsl";
+import { formatDataset } from "./dataset/helpers";
 
 describe("Chat agent service", () => {
   ls.describe("Query DSL -> Prisma Query 컴파일", () => {
     ls.test.each<
       { queryDSL: OntologyQueryDSL },
       { compiledQueries: PrismaQueryCompileResult }
-    >([
-      {
-        inputs: {
-          queryDSL: {
-            pipeline: [
-              {
-                name: "list_all_customers",
-                query: {
-                  objectType: "customer",
-                  properties: ["id", "name", "phone"],
-                  type: "list",
-                },
-              },
-            ],
-          },
-        },
-        referenceOutputs: {
-          compiledQueries: {
-            type: "prisma",
-            pipeline: [
-              {
-                model: "Customer",
-                queryMethod: "findMany",
-                args: {
-                  select: {
-                    id: true,
-                    name: true,
-                    phone: true,
-                  },
-                },
-              },
-            ],
-          },
-        },
-      },
-      {
-        inputs: {
-          queryDSL: {
-            pipeline: [
-              {
-                name: "list_categories",
-                query: {
-                  objectType: "category",
-                  properties: ["id", "name"],
-                  type: "list",
-                },
-              },
-            ],
-          },
-        },
-        referenceOutputs: {
-          compiledQueries: {
-            type: "prisma",
-            pipeline: [
-              {
-                model: "Category",
-                queryMethod: "findMany",
-                args: {
-                  select: {
-                    id: true,
-                    name: true,
-                  },
-                },
-              },
-            ],
-          },
-        },
-      },
-    ])(
+    >(
+      formatDataset(
+        { queryDSL: QueryDSLDataset.simpleLookup },
+        { compiledQueries: PrismaQueryDataset.simpleLookup }
+      )
+    )(
       "단순 Query DSL 컴파일 성공",
 
       async ({ inputs, referenceOutputs }) => {
@@ -346,18 +285,6 @@ describe("Chat agent service", () => {
           console.log(JSON.stringify({ evaluation }, null, 2));
         }
       });
-    }
-  );
-
-  ls.describe(
-    "자연어 질의 -> 온톨로지 질의 -> 파이프라인 실행 -> 응답 생성",
-    () => {
-      const service = new ChatAgentService(
-        OntologyDefinition,
-        new PrismaClientCompiler()
-      );
-
-      ls.test.each([])("단순 조회 질의 응답 생성", async ({ inputs }) => {});
     }
   );
 });

@@ -3,10 +3,11 @@ import { wrapAISDK } from "langsmith/experimental/vercel";
 import * as ai from "ai";
 import OntologyDefinitionContextBuilder from "../prompt/contexts/ontology-definition-context-builder";
 import { openai } from "@ai-sdk/openai";
-import generateUserQueryResponseInstruction from "../prompt/instructions/usery-query-response";
+import buildUserQueryResponseInstruction from "../prompt/instructions/usery-query-response";
 import OBJECT_INSTANCE_FORMAT_CONTEXT from "../prompt/contexts/object-instance-format";
 import z from "zod";
 import type OntologyDefinition from "@/ontology/ontology-definition";
+import PromptBuilder from "../prompt/helpers/prompt-builder";
 const { generateObject } = wrapAISDK(ai);
 
 const UserQueryResponseSchema = z.object({
@@ -54,6 +55,7 @@ export type UserQueryResponseResult = z.infer<typeof UserQueryResponseSchema>;
 
 class UserQueryResponseService {
   private readonly ontologyDefinitionContextBuilder: OntologyDefinitionContextBuilder;
+  private readonly promptBuilder = new PromptBuilder();
 
   constructor(ontologyDefinition: OntologyDefinition) {
     this.ontologyDefinitionContextBuilder =
@@ -72,18 +74,17 @@ class UserQueryResponseService {
         objectTypeIds,
       });
 
-    const input = [
-      "User Query Intent: " + userQueryIntent,
-      "",
-      "Pipeline Result: ",
-      "```json",
-      JSON.stringify(pipelineResult, null, 2),
-      "```",
-    ].join("\n");
+    const input = this.promptBuilder
+      .section("User Query Intent")
+      .text(userQueryIntent)
+      .newLine()
+      .section("Pipeline Result")
+      .json(pipelineResult)
+      .build();
 
     const result = await generateObject({
       model: openai("gpt-5-mini"),
-      system: generateUserQueryResponseInstruction({
+      system: buildUserQueryResponseInstruction({
         ontologyDefinitionContext,
         ontologyInstanceFormatContext: OBJECT_INSTANCE_FORMAT_CONTEXT,
       }),

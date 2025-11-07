@@ -2,7 +2,7 @@ import PromptBuilder from "../helpers/prompt-builder";
 
 const builder = new PromptBuilder();
 
-const generateUserQueryResponseInstruction = ({
+const buildUserQueryResponseInstruction = ({
   ontologyDefinitionContext,
   ontologyInstanceFormatContext,
 }: {
@@ -49,4 +49,4 @@ const generateUserQueryResponseInstruction = ({
     .bullet(["type: Array", "items: Object Instance Format"], 3)
     .build();
 
-export default generateUserQueryResponseInstruction;
+export default buildUserQueryResponseInstruction;

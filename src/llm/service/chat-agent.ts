@@ -1,8 +1,6 @@
 import OntologyDefinition from "@/ontology/ontology-definition";
 import { TextPart, type UIMessage } from "ai";
 import { type OntologyQueryDSL } from "@/ontology-query/dsl-schema";
-import * as ai from "ai";
-import { wrapAISDK } from "langsmith/experimental/vercel";
 import { traceable } from "langsmith/traceable";
 import type QueryCompiler from "@/connector/query-compiler";
 import PrismaQueriesResultTranslator, {
@@ -12,8 +10,6 @@ import type { QueryCompileResult } from "@/connector/query-compiler";
 import { executeQueriesThenTranslateToOntology } from "@/connector/query-executor";
 import UserQueryResponseService from "./user-query-response";
 import QueryDSLGenerator from "./query-dsl-generator";
-
-const { generateObject } = wrapAISDK(ai);
 
 export default class ChatAgentService {
   private readonly prismaQueryResultToOntologyTranslator =

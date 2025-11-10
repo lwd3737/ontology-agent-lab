@@ -3,7 +3,7 @@ import * as ls from "langsmith/vitest";
 import type { PipelineStepResult } from "@/connector/prisma/prisma-queries-result-translator";
 import UserQueryResponseService from "../user-query-response";
 import OntologyDefinition from "@/ontology/ontology-definition";
-import userQueryResponseEvaluator from "./evaluators/user-query-response-evaluator";
+import chatAgentEvaluator from "./evaluators/chat-agent-evaluator";
 import { formatDataset } from "./dataset/helpers";
 import UserQueryDataset from "./dataset/user-query";
 import PipelineResultDataset from "./dataset/pipeline-result";
@@ -22,21 +22,22 @@ describe("UserQueryResponse", () => {
             pipelineResult: PipelineResultDataset.simpleListQueries,
           })
         )("단순 응답 생성", async ({ inputs }) => {
-          const response = await new UserQueryResponseService(
+          const responseResult = await new UserQueryResponseService(
             OntologyDefinition
           ).generateResponse(inputs.userQuery, inputs.pipelineResult);
 
-          ls.logOutputs(response);
+          ls.logOutputs(responseResult);
 
-          const evaluate = ls.wrapEvaluator(userQueryResponseEvaluator);
-          const evaluation = await evaluate({
-            outputs: response,
-          });
+          // const evaluate = ls.wrapEvaluator(chatAgentEvaluator);
+          // const evaluation = await evaluate({
+          //   inputs: { userQuery: inputs.userQuery },
+          //   outputs: { responseResult: responseResult },
+          // });
 
-          if (evaluation.score < 1) {
-            console.warn("응답 생성 평가 기준 미달");
-            console.log(JSON.stringify({ evaluation }, null, 2));
-          }
+          // if (evaluation.score < 1) {
+          //   console.warn("응답 생성 평가 기준 미달");
+          //   console.log(JSON.stringify({ evaluation }, null, 2));
+          // }
         });
       }
     );

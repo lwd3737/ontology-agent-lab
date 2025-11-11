@@ -17,7 +17,7 @@ describe("Chat agent service", () => {
       never
     >(
       formatDataset<{ userQuery: string[] }>({
-        userQuery: UserQueryDataset.simpleListQueries.slice(0, 1),
+        userQuery: UserQueryDataset.simpleListQueries.slice(2),
       })
     )(
       "단순 목록 조회 질의",

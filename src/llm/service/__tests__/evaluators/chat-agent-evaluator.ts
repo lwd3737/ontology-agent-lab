@@ -321,6 +321,19 @@ const validatePrismaModelInstance = (
           return;
         }
 
+        if (typeof propertyValue !== typeof prismaField.value) {
+          errors.push({
+            objectType,
+            rid: reference.rid,
+            message: `Property value type mismatch for ${propertyId}.`,
+            details: {
+              expected: typeof propertyValue,
+              actual: typeof prismaField.value,
+            },
+          });
+          return;
+        }
+
         if (prismaField.value !== propertyValue) {
           errors.push({
             objectType,

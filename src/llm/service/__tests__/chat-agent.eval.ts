@@ -5,6 +5,8 @@ import chatAgentEvaluator from "./evaluators/chat-agent-evaluator";
 import ChatAgentService from "../chat-agent";
 import PrismaClientCompiler from "@/connector/prisma/prisma-client-compiler";
 import { TextPart } from "ai";
+import { formatDataset } from "./dataset/helpers";
+import UserQueryDataset from "./dataset/user-query";
 
 describe("Chat agent service", () => {
   ls.describe("사용자 질의를 기반으로 응답 생성", () => {
@@ -13,23 +15,11 @@ describe("Chat agent service", () => {
         userQuery: string;
       },
       never
-    >([
-      {
-        inputs: {
-          userQuery: "모든 고객을 조회해줘",
-        },
-      },
-      {
-        inputs: {
-          userQuery: "모든 카테고리를 가져와줘",
-        },
-      },
-      {
-        inputs: {
-          userQuery: "제품 목록을 보여줘",
-        },
-      },
-    ])(
+    >(
+      formatDataset<{ userQuery: string[] }>({
+        userQuery: UserQueryDataset.simpleListQueries,
+      })
+    )(
       "단순 목록 조회 질의",
       async ({ inputs }) => {
         const chatAgentService = new ChatAgentService(

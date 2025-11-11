@@ -176,9 +176,9 @@ const evaluateObjectReferenceScore = async (
     };
   }
 
-  const results = await Promise.allSettled(
+  await Promise.allSettled(
     Object.entries(references.objects).map(
-      async function getPrismaModelInstances([objectType, objects]) {
+      async function validateReferenceObjectInstance([objectType, objects]) {
         try {
           const prismaModel = prismaSchemaMapper.mapToPrismaModel(objectType);
           const prismaPrimaryKeyValues = objects.map(
@@ -224,53 +224,49 @@ const evaluateObjectReferenceScore = async (
             modelInstance,
             idx
           ) {
-            Object.entries(objects[idx].properties)
-              .filter(([propertyId]) => {
-                const prismaPrimaryKeyFieldName =
-                  prismaSchemaMapper.mapToPrismaPrimaryKeyField(
-                    objectType,
-                    modelInstance
-                  ).name;
-                return propertyId !== prismaPrimaryKeyFieldName;
-              })
-              .map(([propertyId, propertyValue]) => {
-                const prismaField = prismaSchemaMapper.mapToPrismaField(
-                  objectType,
-                  propertyId,
-                  modelInstance
-                );
+            const propertiesWithoutPrimaryKey = Object.entries(
+              objects[idx].properties
+            ).filter(function filterPrimaryKeyProperty([propertyId]) {
+              return propertyId !== prismaPrimaryKeyFieldName;
+            });
 
-                if (!(prismaField.name in modelInstance)) {
-                  errors.push({
-                    message: `Property ${propertyId} not found in model instance for object type: ${objectType}`,
-                    details: {
-                      objectRid: objects[idx].rid,
-                      fieldNames: Object.keys(prismaFieldsSelect),
-                    },
-                  });
-                }
+            propertiesWithoutPrimaryKey.forEach(function validateProperty([
+              propertyId,
+              propertyValue,
+            ]) {
+              const prismaField = prismaSchemaMapper.mapToPrismaField(
+                objectType,
+                propertyId,
+                modelInstance
+              );
 
-                if (prismaField.value !== propertyValue) {
-                  errors.push({
-                    message: `Property value mismatch for object type: ${objectType}, property id: ${propertyId}`,
-                    details: {
-                      objectRid: objects[idx].rid,
-                      fieldName: prismaField.name,
-                      expected: propertyValue,
-                      actual: prismaField.value,
-                    },
-                  });
-                }
-              });
+              if (!(prismaField.name in modelInstance)) {
+                errors.push({
+                  message: `Property ${propertyId} not found in model instance for object type: ${objectType}`,
+                  details: {
+                    objectRid: objects[idx].rid,
+                    fieldNames: Object.keys(prismaFieldsSelect),
+                  },
+                });
+              }
+
+              if (prismaField.value !== propertyValue) {
+                errors.push({
+                  message: `Property value mismatch for object type: ${objectType}, property id: ${propertyId}`,
+                  details: {
+                    objectRid: objects[idx].rid,
+                    fieldName: prismaField.name,
+                    expected: propertyValue,
+                    actual: prismaField.value,
+                  },
+                });
+              }
+            });
           });
-
-          return prismaModelInstances;
         } catch (error) {
           errors.push({
             message: `Exception occurred while fetching prisma model instances for object type: ${objectType}`,
-            details: {
-              error,
-            },
+            details: JSON.stringify(error, null, 2),
           });
         }
       }

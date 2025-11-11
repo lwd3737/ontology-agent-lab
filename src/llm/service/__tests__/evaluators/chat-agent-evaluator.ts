@@ -15,6 +15,30 @@ type LLMMetricScores = {
   clarity: number;
 };
 
+type LLMMetricReasoning = {
+  relevance: string;
+  completeness: string;
+  clarity: string;
+};
+
+type ObjectReferenceValidation = {
+  success: boolean;
+  errors: ObjectReferenceValidationError[];
+};
+
+type ObjectReferenceValidationError = {
+  objectType: string;
+  rid: string | undefined;
+  message: string;
+  details?: Record<string, unknown>;
+};
+
+type ReferencesObjectMap = NonNullable<
+  NonNullable<UserQueryResponseResult["references"]>["objects"]
+>;
+type ReferencedObjectList = ReferencesObjectMap[string];
+type ReferencedObject = ReferencedObjectList[number];
+
 const METRIC_WEIGHTS = {
   objectReference: 0.4,
   relevance: 0.3,
@@ -72,13 +96,14 @@ const SYSTEM_PROMPT = new PromptBuilder()
   ])
   .build();
 
+const prismaSchemaMapper = PrismaSchemaMapper.create();
+
 const chatAgentEvaluator = async ({
   inputs,
   outputs,
 }: {
   inputs: {
     userQuery: string;
-    // referenceValidation?: ReferenceValidation;
   };
   outputs: { responseResult: UserQueryResponseResult };
 }) => {
@@ -92,7 +117,29 @@ const chatAgentEvaluator = async ({
     ontologyContext,
   });
 
-  // TODO: 시용자 질의를 기반으로 쿼리 타입을 판단해서 참조 객체를 검증하는 툴 구현
+  const referenceValidation = await validateReferences(
+    outputs.responseResult.references
+  );
+  const { scores, reasoning } = await evaluateLLMMetrics(prompt);
+
+  const finalScore = calculateWeightedScore({
+    llmScores: scores,
+    objectReferenceSuccess: referenceValidation.success,
+  });
+
+  return {
+    key: "chatAgentScore",
+    score: finalScore,
+    details: {
+      metrics: buildMetricDetails(reasoning, scores, referenceValidation),
+      weights: METRIC_WEIGHTS,
+    },
+  };
+};
+
+export default chatAgentEvaluator;
+
+const evaluateLLMMetrics = async (prompt: string) => {
   const { object } = await generateObject({
     model: openai("gpt-5"),
     system: SYSTEM_PROMPT,
@@ -100,42 +147,36 @@ const chatAgentEvaluator = async ({
     schema: evaluationSchema,
   });
 
-  const { success: objectReferenceSuccess, details: objectReferenceDetails } =
-    await evaluateObjectReferenceScore(outputs.responseResult.references);
-
-  const finalScore = calculateWeightedScore({
-    llmScores: object.scores,
-    objectReferenceSuccess,
-  });
-
   return {
-    key: "userQueryResponse",
-    score: finalScore,
-    details: {
-      metrics: {
-        relevance: {
-          score: object.scores.relevance,
-          reasoning: object.reasoning.relevance,
-        },
-        completeness: {
-          score: object.scores.completeness,
-          reasoning: object.reasoning.completeness,
-        },
-        clarity: {
-          score: object.scores.clarity,
-          reasoning: object.reasoning.clarity,
-        },
-        objectReference: {
-          score: objectReferenceSuccess ? 1 : 0,
-          details: objectReferenceDetails,
-        },
-      },
-      weights: METRIC_WEIGHTS,
-    },
+    scores: object.scores,
+    reasoning: object.reasoning,
   };
 };
 
-export default chatAgentEvaluator;
+const buildMetricDetails = (
+  reasoning: LLMMetricReasoning,
+  scores: LLMMetricScores,
+  referenceValidation: ObjectReferenceValidation
+) => ({
+  relevance: {
+    score: scores.relevance,
+    reasoning: reasoning.relevance,
+  },
+  completeness: {
+    score: scores.completeness,
+    reasoning: reasoning.completeness,
+  },
+  clarity: {
+    score: scores.clarity,
+    reasoning: reasoning.clarity,
+  },
+  objectReference: {
+    score: referenceValidation.success ? 1 : 0,
+    details: {
+      errors: referenceValidation.errors,
+    },
+  },
+});
 
 const buildUserPrompt = (params: {
   userQuery: string;
@@ -161,124 +202,156 @@ const buildUserPrompt = (params: {
     .build();
 };
 
-const evaluateObjectReferenceScore = async (
+const validateReferences = async (
   references: UserQueryResponseResult["references"]
-): Promise<{ success: boolean; details: { errors: any[] } }> => {
-  const prismaSchemaMapper = PrismaSchemaMapper.create();
-  const errors: any[] = [];
-
+): Promise<ObjectReferenceValidation> => {
   if (!references?.objects) {
-    return {
-      success: true,
-      details: {
-        errors: [],
-      },
-    };
+    return { success: true, errors: [] };
   }
 
-  await Promise.allSettled(
-    Object.entries(references.objects).map(
-      async function validateReferenceObjectInstance([objectType, objects]) {
-        try {
-          const prismaModel = prismaSchemaMapper.mapToPrismaModel(objectType);
-          const prismaPrimaryKeyValues = objects.map(
-            (object): string =>
-              prismaSchemaMapper.mapToPrismaPrimaryKeyField(objectType, object)
-                .value
-          );
-          const prismaPrimaryKeyFieldName =
-            prismaSchemaMapper.mapToPrismaPrimaryKeyField(
-              objectType,
-              objects[0]
-            ).name;
+  const validationErrors: ObjectReferenceValidationError[] = [];
+  const referencedObjectsByType = references.objects as ReferencesObjectMap;
 
-          const prismaFieldsSelect = Object.keys(objects[0].properties).reduce(
-            (result, property) => {
-              result[property] = true;
-              return result;
-            },
-            {} as Record<string, boolean>
-          );
-
-          let prismaModelInstances: PrismaModelInstance[] = [];
-          try {
-            prismaModelInstances = await prisma[prismaModel].findMany({
-              where: {
-                [prismaPrimaryKeyFieldName]: {
-                  in: prismaPrimaryKeyValues,
-                },
-                select: prismaFieldsSelect,
-              },
-            });
-          } catch (error) {
-            errors.push({
-              message: `Failed to fetch prisma model instances for object type: ${objectType}`,
-              details: {
-                fieldNames: Object.keys(prismaFieldsSelect),
-                error,
-              },
-            });
-          }
-
-          prismaModelInstances.forEach(function validateModelInstance(
-            modelInstance,
-            idx
-          ) {
-            const propertiesWithoutPrimaryKey = Object.entries(
-              objects[idx].properties
-            ).filter(function filterPrimaryKeyProperty([propertyId]) {
-              return propertyId !== prismaPrimaryKeyFieldName;
-            });
-
-            propertiesWithoutPrimaryKey.forEach(function validateProperty([
-              propertyId,
-              propertyValue,
-            ]) {
-              const prismaField = prismaSchemaMapper.mapToPrismaField(
-                objectType,
-                propertyId,
-                modelInstance
-              );
-
-              if (!(prismaField.name in modelInstance)) {
-                errors.push({
-                  message: `Property ${propertyId} not found in model instance for object type: ${objectType}`,
-                  details: {
-                    objectRid: objects[idx].rid,
-                    fieldNames: Object.keys(prismaFieldsSelect),
-                  },
-                });
-              }
-
-              if (prismaField.value !== propertyValue) {
-                errors.push({
-                  message: `Property value mismatch for object type: ${objectType}, property id: ${propertyId}`,
-                  details: {
-                    objectRid: objects[idx].rid,
-                    fieldName: prismaField.name,
-                    expected: propertyValue,
-                    actual: prismaField.value,
-                  },
-                });
-              }
-            });
-          });
-        } catch (error) {
-          errors.push({
-            message: `Exception occurred while fetching prisma model instances for object type: ${objectType}`,
-            details: JSON.stringify(error, null, 2),
-          });
-        }
+  await Promise.all(
+    Object.entries(referencedObjectsByType).map(
+      async ([objectType, objectInstances]) => {
+        await validateObjectsReferences(
+          objectType,
+          objectInstances,
+          validationErrors
+        );
       }
     )
   );
 
   return {
-    success: errors.length === 0,
-    details: {
-      errors,
-    },
+    success: validationErrors.length === 0,
+    errors: validationErrors,
   };
+};
+
+const validateObjectsReferences = async (
+  objectType: string,
+  referencedObjects: ReferencedObjectList,
+  errors: ObjectReferenceValidationError[]
+) => {
+  try {
+    const prismaModel = prismaSchemaMapper.mapToPrismaModel(objectType);
+    const primaryKeyFieldName =
+      prismaSchemaMapper.mapToPrismaPrimaryKeyName(objectType);
+    const select = buildPrismaSelect(objectType, referencedObjects);
+
+    const prismaModelInstances: PrismaModelInstance[] = await prisma[
+      prismaModel
+    ].findMany({
+      where: {
+        [primaryKeyFieldName]: {
+          in: referencedObjects.map((object) => object.rid),
+        },
+      },
+      select,
+    });
+
+    referencedObjects.forEach((reference) => {
+      const modelInstance = prismaModelInstances.find(
+        (instance) => instance[primaryKeyFieldName] === reference.rid
+      );
+      if (!modelInstance) {
+        errors.push({
+          objectType,
+          rid: reference.rid,
+          message: "Referenced object was not found in the database.",
+        });
+        return;
+      }
+
+      validatePrismaModelInstance(objectType, reference, modelInstance, errors);
+    });
+  } catch (error) {
+    errors.push({
+      objectType,
+      rid: undefined,
+      message:
+        "Exception occurred while validating referenced object instances.",
+      details: formatErrorDetails(error),
+    });
+  }
+};
+
+const buildPrismaSelect = (
+  objectType: string,
+  referencedObjects: ReferencedObjectList
+) => {
+  return referencedObjects.reduce((select, object) => {
+    Object.keys(object.properties).forEach((propertyId) => {
+      const prismaField = prismaSchemaMapper.mapToPrismaFieldName(
+        objectType,
+        propertyId
+      );
+      select[prismaField] = true;
+    });
+    return select;
+  }, {} as Record<string, boolean>);
+};
+
+const validatePrismaModelInstance = (
+  objectType: string,
+  reference: ReferencedObject,
+  modelInstance: PrismaModelInstance,
+  errors: ObjectReferenceValidationError[]
+) => {
+  Object.entries(reference.properties).forEach(
+    ([propertyId, propertyValue]) => {
+      try {
+        const prismaField = prismaSchemaMapper.mapToPrismaField(
+          objectType,
+          propertyId,
+          modelInstance
+        );
+
+        if (!(prismaField.name in modelInstance)) {
+          errors.push({
+            objectType,
+            rid: reference.rid,
+            message: `Property ${propertyId} does not exist on the Prisma model.`,
+            details: {
+              availableFields: Object.keys(modelInstance),
+            },
+          });
+          return;
+        }
+
+        if (prismaField.value !== propertyValue) {
+          errors.push({
+            objectType,
+            rid: reference.rid,
+            message: `Property value mismatch for ${propertyId}.`,
+            details: {
+              expected: propertyValue,
+              actual: prismaField.value,
+            },
+          });
+        }
+      } catch (error) {
+        errors.push({
+          objectType,
+          rid: reference.rid,
+          message: `Failed to validate property ${propertyId}.`,
+          details: formatErrorDetails(error),
+        });
+      }
+    }
+  );
+};
+
+const formatErrorDetails = (error: unknown) => {
+  if (error instanceof Error) {
+    return {
+      message: error.message,
+      stack: error.stack,
+    };
+  }
+  return { error };
 };
 
 const calculateWeightedScore = ({

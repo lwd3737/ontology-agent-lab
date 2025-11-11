@@ -7,9 +7,13 @@ import PrismaQueriesResultTranslator, {
   type PipelineStepResult,
 } from "@/connector/prisma/prisma-queries-result-translator";
 import type { QueryCompileResult } from "@/connector/query-compiler";
-import { executeQueriesThenTranslateToOntology } from "@/connector/query-executor";
 import UserQueryResponseService from "./user-query-response";
 import QueryDSLGenerator from "./query-dsl-generator";
+import {
+  executePrismaQueries,
+  type PrismaQueryResult,
+} from "@/connector/prisma/prisma-query-executor";
+import type { PrismaQuery } from "@/connector/prisma/prisma-client-compiler";
 
 export default class ChatAgentService {
   private readonly prismaQueryResultToOntologyTranslator =
@@ -42,6 +46,12 @@ export default class ChatAgentService {
       this.executeQueriesThenTranslateToOntology.bind(this),
       {
         name: "executeQueriesThenTranslateToOntology",
+      }
+    );
+    this.executePrismaQueries = traceable(
+      this.executePrismaQueries.bind(this),
+      {
+        name: "executePrismaQueries",
       }
     );
     this.generateUserQueryResponse = traceable(
@@ -89,6 +99,26 @@ export default class ChatAgentService {
     return this.queryCompiler.compileFromQueryDSL(queryDSL);
   }
 
+  private async executeQueriesThenTranslateToOntology(
+    compileResult: QueryCompileResult,
+    queryDSL: OntologyQueryDSL
+  ): Promise<PipelineStepResult[]> {
+    switch (compileResult.type) {
+      case "prisma":
+        const queryResults = await this.executePrismaQueries(
+          compileResult.pipeline
+        );
+        return this.translatePrismaQueryResultToOntology(
+          queryResults,
+          queryDSL
+        );
+      default:
+        throw new Error(
+          `Unsupported query compiler type: ${compileResult.type}`
+        );
+    }
+  }
+
   public async translatePrismaQueryResultToOntology(
     queryResult: any,
     queryDSL: OntologyQueryDSL
@@ -99,22 +129,10 @@ export default class ChatAgentService {
     );
   }
 
-  private async executeQueriesThenTranslateToOntology(
-    compileResult: QueryCompileResult,
-    queryDSL: OntologyQueryDSL
-  ): Promise<PipelineStepResult[]> {
-    switch (compileResult.type) {
-      case "prisma":
-        return executeQueriesThenTranslateToOntology(
-          "prisma",
-          compileResult.pipeline,
-          queryDSL
-        );
-      default:
-        throw new Error(
-          `Unsupported query compiler type: ${compileResult.type}`
-        );
-    }
+  private async executePrismaQueries(
+    queries: PrismaQuery[]
+  ): Promise<PrismaQueryResult[]> {
+    return executePrismaQueries(queries);
   }
 
   private async generateUserQueryResponse(

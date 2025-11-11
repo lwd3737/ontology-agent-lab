@@ -52,13 +52,34 @@ export default class PrismaSchemaMapper {
     if (!fieldName) {
       throw new Error(`No field name found for property id: ${propertyId}`);
     }
-    return modelInstance[fieldName];
+    const value = modelInstance[fieldName];
+    if (!value) {
+      throw new Error(`No value found for field: ${fieldName}`);
+    }
+    return {
+      name: fieldName,
+      value,
+    };
   }
 
   public mapToPrismaPrimaryKeyField(
     objectTypeId: string,
     modelInstance: PrismaModelInstance
   ): { name: string; value: any } {
+    const fieldName = this.mapToPrismaPrimaryKeyName(objectTypeId);
+
+    const value = modelInstance[fieldName];
+    if (!value) {
+      throw new Error(`No value found for field: ${fieldName}`);
+    }
+
+    return {
+      name: fieldName,
+      value: value,
+    };
+  }
+
+  public mapToPrismaPrimaryKeyName(objectTypeId: string): string {
     const objectType = this.getObjectType(objectTypeId);
 
     const primaryKeyProperty = objectType.properties.find(
@@ -80,15 +101,7 @@ export default class PrismaSchemaMapper {
       );
     }
 
-    const value = modelInstance[fieldName];
-    if (!value) {
-      throw new Error(`No value found for field: ${fieldName}`);
-    }
-
-    return {
-      name: fieldName,
-      value: value,
-    };
+    return fieldName;
   }
 
   public mapToOntologyProperties(

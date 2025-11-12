@@ -26,7 +26,7 @@ describe("Chat agent service", () => {
           OntologyDefinition,
           new PrismaClientCompiler()
         );
-        const responseResult = await chatAgentService.ask([
+        const responseResult = await chatAgentService.chat([
           {
             id: "1",
             role: "user",

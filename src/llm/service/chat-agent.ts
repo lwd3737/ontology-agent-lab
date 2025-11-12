@@ -1,5 +1,5 @@
 import OntologyDefinition from "@/ontology/ontology-definition";
-import { TextPart, type UIMessage } from "ai";
+import { type UIMessage } from "ai";
 import { type OntologyQueryDSL } from "@/ontology-query/dsl-schema";
 import { traceable } from "langsmith/traceable";
 import type QueryCompiler from "@/connector/query-compiler";
@@ -7,15 +7,19 @@ import PrismaQueriesResultTranslator, {
   type PipelineStepResult,
 } from "@/connector/prisma/prisma-queries-result-translator";
 import type { QueryCompileResult } from "@/connector/query-compiler";
-import UserQueryResponseService from "./user-query-response";
+import UserQueryResponseService, {
+  type UserQueryResponseResult,
+} from "./user-query-response";
 import QueryDSLGenerator from "./query-dsl-generator";
 import {
   executePrismaQueries,
   type PrismaQueryResult,
 } from "@/connector/prisma/prisma-query-executor";
 import type { PrismaQuery } from "@/connector/prisma/prisma-client-compiler";
+import UserQueryIntentRouter from "./user-query-intent-router";
 
 export default class ChatAgentService {
+  private readonly userQueryIntentRouter: UserQueryIntentRouter;
   private readonly prismaQueryResultToOntologyTranslator =
     new PrismaQueriesResultTranslator();
   private readonly userQueryResponseService: UserQueryResponseService;
@@ -25,6 +29,12 @@ export default class ChatAgentService {
     ontologyDefinition: OntologyDefinition,
     private readonly queryCompiler: QueryCompiler
   ) {
+    this.userQueryIntentRouter = new UserQueryIntentRouter(
+      ontologyDefinition,
+      traceable(this.generateAnswer.bind(this), {
+        name: "generateAnswer",
+      })
+    );
     this.queryDSLGenerator = new QueryDSLGenerator(ontologyDefinition);
     this.userQueryResponseService = new UserQueryResponseService(
       ontologyDefinition
@@ -62,12 +72,15 @@ export default class ChatAgentService {
     );
   }
 
-  public async ask(messages: UIMessage[]) {
-    const message = messages[messages.length - 1].parts[0];
-    // TODO: LLM으로 사용자 의도 추출
-    const userQuery = (message as TextPart).text;
+  public async chat(messages: UIMessage[]) {
+    const result = await this.userQueryIntentRouter.execute(messages);
+    return result;
+  }
 
-    const queryDSL = await this.generateQueryDsl(userQuery);
+  public async generateAnswer(
+    userQueryIntent: string
+  ): Promise<UserQueryResponseResult> {
+    const queryDSL = await this.generateQueryDsl(userQueryIntent);
     const compiledQueries = await this.compileQueryDSL(queryDSL);
 
     if (compiledQueries.pipeline.length === 0) {
@@ -79,7 +92,7 @@ export default class ChatAgentService {
       queryDSL
     );
     const userQueryResponse = await this.generateUserQueryResponse(
-      userQuery,
+      userQueryIntent,
       pipelineResult
     );
 
@@ -88,7 +101,6 @@ export default class ChatAgentService {
 
   public async generateQueryDsl(
     userQueryIntent: string
-    // messages: UIMessage[]
   ): Promise<OntologyQueryDSL> {
     return this.queryDSLGenerator.execute(userQueryIntent);
   }

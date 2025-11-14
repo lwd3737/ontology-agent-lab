@@ -1,53 +1,69 @@
 import {
+  type Tool,
   type UIMessage,
   Experimental_Agent as Agent,
-  Output,
+  convertToModelMessages,
   tool,
   validateUIMessages,
 } from "ai";
 import { openai } from "@ai-sdk/openai";
-import PromptBuilder from "../prompt/helpers/prompt-builder";
 import type OntologyDefinition from "@/ontology/ontology-definition";
 import OntologyDefinitionContextBuilder from "../prompt/contexts/ontology-definition-context-builder";
 import z from "zod";
+import buildUserQueryIntentRouterInstruction from "../prompt/instructions/user-query-intent-router";
+import type { UserQueryResponseResult } from "./user-query-response";
 
-const buildUserQueryIntentRouterInstruction = ({
-  ontologyDefinitionContext,
-}: {
-  ontologyDefinitionContext: string;
-}) =>
-  new PromptBuilder()
-    .section("Role")
-    .text(
-      "You analyze the conversation history to decide whether the user's intent is clear, ambiguous (needs clarification), or unsupported (cannot be answered). Respond in Korean when generating follow-up messages."
-    )
-    .newLine()
-    .section("Rules")
-    .bullet([
-      "Leverage the provided ontology definition context to determine if the request is answerable.",
-      "Use the conversation history to extract the user's intent.",
-      "Return both the inferred intent and a status indicating whether the intent is clear enough to answer using the ontology context.",
-      "If the ontology context does not cover the requested information, mark the status as unsupported.",
-      "When the intent is ambiguous or unsupported, craft an appropriate Korean follow-up message (clarifying question or refusal) that fits the dialogue context.",
-    ])
-    .newLine()
-    .section("Ontology Definition Context")
-    .text(ontologyDefinitionContext)
-    .build();
+// const UserQueryIntentRouterSchema = z.object({
+//   status: z
+//     .enum(["clear", "ambiguous", "unsupported"])
+//     .describe("The status of the user query intent."),
+//   response: z.string().describe("The response to the user."),
+// });
 
-const UserQueryIntentRouterSchema = z.object({
-  status: z
-    .enum(["clear", "ambiguous", "unsupported"])
-    .describe("The status of the user query intent."),
-  response: z.string().describe("The response to the user."),
+// type UserQueryIntentRouterResult = z.infer<typeof UserQueryIntentRouterSchema>;
+
+const GenerateAnswerInputSchema = z.object({
+  userQueryIntent: z.string().describe("The user's query intent."),
 });
 
+// zod infer
+type GenerateAnswerInput = z.infer<typeof GenerateAnswerInputSchema>;
+
+export type UserQueryIntentRouterResult =
+  | {
+      userQueryIntent: string;
+      response: string;
+      success: boolean;
+      references?: {
+        objects?: Record<
+          string,
+          {
+            rid: string;
+            objectType: string;
+            properties: Record<string, any>;
+          }[]
+        >;
+      };
+    }
+  | string;
+
 export default class UserQueryIntentRouter {
-  private readonly agent: Agent<any, any, any>;
+  private readonly agent: Agent<
+    {
+      generateAnswer: Tool<
+        { userQueryIntent: string },
+        UserQueryResponseResult
+      >;
+    },
+    any,
+    any
+  >;
 
   constructor(
     ontologyDefinition: OntologyDefinition,
-    private readonly onGenerateAnswer: (userQueryIntent: string) => Promise<any>
+    private readonly onGenerateAnswer: (
+      userQueryIntent: string
+    ) => Promise<UserQueryResponseResult>
   ) {
     const ontologyDefinitionContextBuilder =
       new OntologyDefinitionContextBuilder(ontologyDefinition);
@@ -56,16 +72,14 @@ export default class UserQueryIntentRouter {
       system: buildUserQueryIntentRouterInstruction({
         ontologyDefinitionContext: ontologyDefinitionContextBuilder.build(),
       }),
-      experimental_output: Output.object({
-        schema: UserQueryIntentRouterSchema,
-      }),
+      // experimental_output: Output.object({
+      //   schema: UserQueryIntentRouterSchema,
+      // }),
       tools: {
         generateAnswer: tool({
           description:
             "Generate an answer to the user's query when user's query intent is clear.",
-          inputSchema: z.object({
-            userQueryIntent: z.string().describe("The user's query intent."),
-          }),
+          inputSchema: GenerateAnswerInputSchema,
           execute: async ({ userQueryIntent }) => {
             return await this.onGenerateAnswer(userQueryIntent);
           },
@@ -74,9 +88,27 @@ export default class UserQueryIntentRouter {
     });
   }
 
-  public async execute(messages: UIMessage[]) {
-    return this.agent.respond({
-      messages: await validateUIMessages({ messages }),
+  public async execute(
+    messages: UIMessage[]
+  ): Promise<UserQueryIntentRouterResult> {
+    const result = await this.agent.generate({
+      messages: convertToModelMessages(await validateUIMessages({ messages })),
     });
+
+    for (const step of result.steps) {
+      const toolResult = step.content.find(
+        (content) => content.type === "tool-result"
+      );
+
+      if (toolResult?.toolName === "generateAnswer") {
+        const { userQueryIntent } = toolResult.input as GenerateAnswerInput;
+        return {
+          userQueryIntent,
+          ...(toolResult.output as UserQueryResponseResult),
+        };
+      }
+    }
+
+    return result.text;
   }
 }

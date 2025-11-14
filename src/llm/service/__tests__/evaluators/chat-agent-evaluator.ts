@@ -2,7 +2,7 @@ import { generateObject } from "ai";
 import { openai } from "@ai-sdk/openai";
 import z from "zod";
 import PromptBuilder from "@/llm/prompt/helpers/prompt-builder";
-import type { UserQueryResponseResult } from "../../user-query-response";
+import type { UserQueryAnswerResult } from "../../user-query-answer";
 import OntologyDefinitionContextBuilder from "@/llm/prompt/contexts/ontology-definition-context-builder";
 import OntologyDefinition from "@/ontology/ontology-definition";
 import PrismaSchemaMapper from "@/connector/prisma/schema-mapping/schema-mapper";
@@ -34,7 +34,7 @@ type ObjectReferenceValidationError = {
 };
 
 type ReferencesObjectMap = NonNullable<
-  NonNullable<UserQueryResponseResult["references"]>["objects"]
+  NonNullable<UserQueryAnswerResult["references"]>["objects"]
 >;
 type ReferencedObjectList = ReferencesObjectMap[string];
 type ReferencedObject = ReferencedObjectList[number];
@@ -105,7 +105,7 @@ const chatAgentEvaluator = async ({
   inputs: {
     userQuery: string;
   };
-  outputs: { responseResult: UserQueryResponseResult };
+  outputs: { responseResult: UserQueryAnswerResult };
 }) => {
   const ontologyContext = new OntologyDefinitionContextBuilder(
     OntologyDefinition
@@ -113,7 +113,7 @@ const chatAgentEvaluator = async ({
 
   const prompt = buildUserPrompt({
     userQuery: inputs.userQuery,
-    responseText: outputs.responseResult.response,
+    responseText: outputs.responseResult.answer,
     ontologyContext,
   });
 
@@ -203,7 +203,7 @@ const buildUserPrompt = (params: {
 };
 
 const validateReferences = async (
-  references: UserQueryResponseResult["references"]
+  references: UserQueryAnswerResult["references"]
 ): Promise<ObjectReferenceValidation> => {
   if (!references?.objects) {
     return { success: true, errors: [] };

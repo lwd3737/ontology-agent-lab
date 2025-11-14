@@ -7,9 +7,9 @@ import PrismaQueriesResultTranslator, {
   type PipelineStepResult,
 } from "@/connector/prisma/prisma-queries-result-translator";
 import type { QueryCompileResult } from "@/connector/query-compiler";
-import UserQueryResponseService, {
-  type UserQueryResponseResult,
-} from "./user-query-response";
+import UserQueryAnswerService, {
+  type UserQueryAnswerResult,
+} from "./user-query-answer";
 import QueryDSLGenerator from "./query-dsl-generator";
 import {
   executePrismaQueries,
@@ -22,7 +22,7 @@ export default class ChatAgentService {
   private readonly userQueryIntentRouter: UserQueryIntentRouter;
   private readonly prismaQueryResultToOntologyTranslator =
     new PrismaQueriesResultTranslator();
-  private readonly userQueryResponseService: UserQueryResponseService;
+  private readonly userQueryResponseService: UserQueryAnswerService;
   private readonly queryDSLGenerator: QueryDSLGenerator;
 
   constructor(
@@ -36,7 +36,7 @@ export default class ChatAgentService {
       })
     );
     this.queryDSLGenerator = new QueryDSLGenerator(ontologyDefinition);
-    this.userQueryResponseService = new UserQueryResponseService(
+    this.userQueryResponseService = new UserQueryAnswerService(
       ontologyDefinition
     );
 
@@ -79,7 +79,7 @@ export default class ChatAgentService {
 
   public async generateAnswer(
     userQueryIntent: string
-  ): Promise<UserQueryResponseResult> {
+  ): Promise<UserQueryAnswerResult> {
     const queryDSL = await this.generateQueryDsl(userQueryIntent);
     const compiledQueries = await this.compileQueryDSL(queryDSL);
 

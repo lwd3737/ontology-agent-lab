@@ -10,8 +10,8 @@ import type OntologyDefinition from "@/ontology/ontology-definition";
 import PromptBuilder from "../prompt/helpers/prompt-builder";
 const { generateObject } = wrapAISDK(ai);
 
-const UserQueryResponseSchema = z.object({
-  response: z
+const UserQueryAnswerSchema = z.object({
+  answer: z
     .string()
     .describe(
       "The response to the user's query in natural language. When referencing an object instance in the response text, add {{object:[rid]}} at the end of the referenced part, where [rid] is the actual resource ID value. Example: '총 3명의 고객이 있습니다: 김민준{{object:clx1234567890}}, 이소연{{object:clx0987654321}}, 박지현{{object:clx1122334455}}'"
@@ -56,9 +56,9 @@ const UserQueryResponseSchema = z.object({
     ),
 });
 
-export type UserQueryResponseResult = z.infer<typeof UserQueryResponseSchema>;
+export type UserQueryAnswerResult = z.infer<typeof UserQueryAnswerSchema>;
 
-class UserQueryResponseService {
+class UserQueryAnswerService {
   private readonly ontologyDefinitionContextBuilder: OntologyDefinitionContextBuilder;
   private readonly promptBuilder = new PromptBuilder();
 
@@ -70,7 +70,7 @@ class UserQueryResponseService {
   public async generateResponse(
     userQueryIntent: string,
     pipelineResult: PipelineStepResult[]
-  ) {
+  ): Promise<UserQueryAnswerResult> {
     const objectTypeIds = Array.from(
       new Set(pipelineResult.map((step) => step.objectType))
     );
@@ -95,7 +95,7 @@ class UserQueryResponseService {
       }),
       prompt: input,
       schemaName: "UserQueryResponse",
-      schema: UserQueryResponseSchema,
+      schema: UserQueryAnswerSchema,
       schemaDescription:
         "This schema generates a conversational Korean response based on the user's natural language query, ontology, and pipeline results.",
       maxRetries: 3,
@@ -112,4 +112,4 @@ class UserQueryResponseService {
   }
 }
 
-export default UserQueryResponseService;
+export default UserQueryAnswerService;

@@ -5,7 +5,7 @@ import UserQueryDataset from "./dataset/user-query";
 import OntologyDefinition from "@/ontology/ontology-definition";
 import UserQueryIntentRouter from "../user-query-intent-router";
 import type { TextPart, UIMessage } from "ai";
-import type { UserQueryResponseResult } from "../user-query-response";
+import type { UserQueryAnswerResult } from "../user-query-answer";
 
 describe("UserQueryIntentRouter", () => {
   ls.describe("명확한 사용자 질의", () => {
@@ -22,9 +22,9 @@ describe("UserQueryIntentRouter", () => {
     )("단순 조회 질의", async ({ inputs }) => {
       const generateAnswer = async (
         userQueryIntent: string
-      ): Promise<UserQueryResponseResult> => {
+      ): Promise<UserQueryAnswerResult> => {
         return {
-          response: "단순 조회 질의 테스트 응답",
+          answer: "단순 조회 질의 테스트 응답",
           success: true,
           references: {
             objects: {

@@ -11,7 +11,7 @@ import type OntologyDefinition from "@/ontology/ontology-definition";
 import OntologyDefinitionContextBuilder from "../prompt/contexts/ontology-definition-context-builder";
 import z from "zod";
 import buildUserQueryIntentRouterInstruction from "../prompt/instructions/user-query-intent-router";
-import type { UserQueryResponseResult } from "./user-query-response";
+import type { UserQueryAnswerResult } from "./user-query-answer";
 
 // const UserQueryIntentRouterSchema = z.object({
 //   status: z
@@ -30,30 +30,13 @@ const GenerateAnswerInputSchema = z.object({
 type GenerateAnswerInput = z.infer<typeof GenerateAnswerInputSchema>;
 
 export type UserQueryIntentRouterResult =
-  | {
-      userQueryIntent: string;
-      response: string;
-      success: boolean;
-      references?: {
-        objects?: Record<
-          string,
-          {
-            rid: string;
-            objectType: string;
-            properties: Record<string, any>;
-          }[]
-        >;
-      };
-    }
+  | (UserQueryAnswerResult & GenerateAnswerInput)
   | string;
 
 export default class UserQueryIntentRouter {
   private readonly agent: Agent<
     {
-      generateAnswer: Tool<
-        { userQueryIntent: string },
-        UserQueryResponseResult
-      >;
+      generateAnswer: Tool<{ userQueryIntent: string }, UserQueryAnswerResult>;
     },
     any,
     any
@@ -63,7 +46,7 @@ export default class UserQueryIntentRouter {
     ontologyDefinition: OntologyDefinition,
     private readonly onGenerateAnswer: (
       userQueryIntent: string
-    ) => Promise<UserQueryResponseResult>
+    ) => Promise<UserQueryAnswerResult>
   ) {
     const ontologyDefinitionContextBuilder =
       new OntologyDefinitionContextBuilder(ontologyDefinition);
@@ -104,7 +87,7 @@ export default class UserQueryIntentRouter {
         const { userQueryIntent } = toolResult.input as GenerateAnswerInput;
         return {
           userQueryIntent,
-          ...(toolResult.output as UserQueryResponseResult),
+          ...(toolResult.output as UserQueryAnswerResult),
         };
       }
     }
